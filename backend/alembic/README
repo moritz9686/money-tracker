@@ -1,0 +1,2 @@
+Alembic migration scripts are stored in this directory. No domain tables exist in
+this milestone, so no migration revision has been created yet.
