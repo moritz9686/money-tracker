@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
-String formatInr(int amount) {
-  final digits = amount.abs().toString();
+import '../../domain/models/financial_models.dart';
+
+String formatMoney(Money amount) {
+  final whole = amount.minorUnits ~/ 100;
+  final digits = whole.abs().toString();
   final reversed = digits.split('').reversed.toList();
   final parts = <String>[];
   for (var index = 0; index < reversed.length; index += 3) {
     parts.add(reversed.skip(index).take(3).toList().reversed.join());
   }
-  return '${amount.isNegative ? '-' : ''}₹${parts.reversed.join(',')}';
+  final fractional = amount.minorUnits.abs() % 100;
+  final suffix = fractional == 0 ? '' : '.${fractional.toString().padLeft(2, '0')}';
+  return '${amount.minorUnits.isNegative ? '-' : ''}₹${parts.reversed.join(',')}$suffix';
 }
 
 class SummaryCard extends StatelessWidget {
@@ -19,7 +24,7 @@ class SummaryCard extends StatelessWidget {
   });
 
   final String label;
-  final int amount;
+  final Money amount;
   final Color color;
 
   @override
@@ -32,7 +37,7 @@ class SummaryCard extends StatelessWidget {
               Text(label, style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 8),
               Text(
-                formatInr(amount),
+                formatMoney(amount),
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: color,
                       fontWeight: FontWeight.bold,
@@ -66,7 +71,7 @@ class BreakdownRow extends StatelessWidget {
           Row(
             children: [
               Expanded(child: Text(label)),
-              Text(formatInr(amount)),
+              Text(formatMoney(Money.fromMinorUnits(amount, 'INR'))),
             ],
           ),
           const SizedBox(height: 5),

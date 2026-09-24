@@ -12,10 +12,11 @@ model requirement. It currently uses safe mock data while backend authentication
 not available.
 
 The app includes Splash, Login, Dashboard, Transactions, Transaction Details,
-Accounts, Categories, and Settings screens. The dashboard provides income,
-expenses, net balance, recent activity, category spending, and payment-mode
-spending. It deliberately does **not** implement SMS, Gmail, Account Aggregator, or
-bank-statement parsing.
+Accounts, Categories, and Settings screens. The transaction list and transaction
+detail view call the FastAPI backend; the dashboard is calculated from the returned
+transaction page. Accounts and Categories remain mock reference data because their
+backend endpoints do not exist yet. It deliberately does **not** implement SMS,
+Gmail, Account Aggregator, or bank-statement parsing.
 
 The mobile layers are intentionally small:
 
@@ -28,14 +29,22 @@ mobile/lib/presentation/ reusable widgets and screens
 
 Authentication is isolated behind `AuthRepository`, so a future OAuth/backend
 implementation can replace the mock repository without changing screen code. The
-`ApiClient` abstraction is ready for a deployed FastAPI URL, configured at build
-time without committing credentials:
+`ApiClient` uses `GET /transactions` and `GET /transactions/{id}`, surfaces generic
+network/API errors, and sends pagination plus supported query filters. Amounts from
+the API are parsed into integer minor units, never Dart `double` values.
+
+Configure the non-secret API URL at build time—there is no hardcoded URL:
 
 ```bash
 cd mobile
 flutter pub get
-flutter run --dart-define=API_BASE_URL=https://your-api.example.com
+flutter run --dart-define=API_BASE_URL=https://your-api.example.com \
+  --dart-define=API_DEVELOPMENT_USER_ID=your-development-user-uuid
 ```
+
+`API_DEVELOPMENT_USER_ID` is optional and exists only for the backend's temporary
+development-user mechanism. It is not authentication and must be replaced by an
+auth token provider in the authentication milestone.
 
 For a new clone, generate the standard native runners with a Flutter SDK in a cloud
 development environment, then run the shared app:

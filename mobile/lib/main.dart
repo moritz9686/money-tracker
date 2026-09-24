@@ -3,5 +3,5 @@ import 'package:flutter/widgets.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MoneyTrackerApp(dependencies: AppDependencies.mock()));
+  runApp(MoneyTrackerApp(dependencies: AppDependencies.production()));
 }

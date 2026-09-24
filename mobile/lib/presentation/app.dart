@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../core/config/api_config.dart';
+import '../core/networking/api_client.dart';
+import '../data/repositories/api_transaction_repository.dart';
 import '../data/repositories/mock_repositories.dart';
 import '../domain/repositories/repositories.dart';
 import 'screens/app_screens.dart';
@@ -8,14 +11,25 @@ class AppDependencies {
   const AppDependencies({
     required this.authRepository,
     required this.transactionRepository,
+    required this.referenceDataRepository,
   });
 
   final AuthRepository authRepository;
   final TransactionRepository transactionRepository;
+  final ReferenceDataRepository referenceDataRepository;
 
-  factory AppDependencies.mock() => AppDependencies(
+  factory AppDependencies.production() => AppDependencies(
         authRepository: MockAuthRepository(),
-        transactionRepository: MockTransactionRepository(),
+        transactionRepository: ApiTransactionRepository(
+          HttpApiClient(
+            baseUrl: ApiConfig.baseUrl,
+            headers: {
+              if (ApiConfig.developmentUserId.isNotEmpty)
+                'X-Development-User-Id': ApiConfig.developmentUserId,
+            },
+          ),
+        ),
+        referenceDataRepository: MockReferenceDataRepository(),
       );
 }
 

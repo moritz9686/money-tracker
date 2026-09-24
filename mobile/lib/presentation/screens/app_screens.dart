@@ -118,8 +118,8 @@ class _AppShellState extends State<AppShell> {
     final pages = [
       DashboardScreen(repository: widget.dependencies.transactionRepository),
       TransactionsScreen(repository: widget.dependencies.transactionRepository),
-      AccountsScreen(repository: widget.dependencies.transactionRepository),
-      CategoriesScreen(repository: widget.dependencies.transactionRepository),
+      AccountsScreen(repository: widget.dependencies.referenceDataRepository),
+      CategoriesScreen(repository: widget.dependencies.referenceDataRepository),
       SettingsScreen(dependencies: widget.dependencies),
     ];
     const titles = ['Dashboard', 'Transactions', 'Accounts', 'Categories', 'Settings'];
@@ -147,24 +147,28 @@ class DashboardScreen extends StatelessWidget {
   final TransactionRepository repository;
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<List<FinancialTransaction>>(
-        future: repository.getTransactions(),
+  Widget build(BuildContext context) => FutureBuilder<TransactionPage>(
+        future: repository.getTransactions(const TransactionQuery()),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return EmptyState(message: 'Could not load dashboard. ${snapshot.error}');
+          }
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final transactions = snapshot.data!;
+          final transactions = snapshot.data!.items;
+          if (transactions.isEmpty) return const EmptyState(message: 'No transactions yet.');
           final income = transactions
               .where((item) => item.type == TransactionType.credit)
-              .fold(0, (sum, item) => sum + item.amount);
+              .fold(0, (sum, item) => sum + item.amount.minorUnits);
           final expenses = transactions
               .where((item) => item.type == TransactionType.debit)
-              .fold(0, (sum, item) => sum + item.amount);
+              .fold(0, (sum, item) => sum + item.amount.minorUnits);
           final byCategory = <String, int>{};
           final byMode = <String, int>{};
           for (final item in transactions.where((item) => item.type == TransactionType.debit)) {
-            byCategory.update(item.category.name, (amount) => amount + item.amount,
-                ifAbsent: () => item.amount);
-            byMode.update(_paymentModeLabel(item.paymentMode), (amount) => amount + item.amount,
-                ifAbsent: () => item.amount);
+            byCategory.update(item.category?.name ?? 'Uncategorized', (amount) => amount + item.amount.minorUnits,
+                ifAbsent: () => item.amount.minorUnits);
+            byMode.update(_paymentModeLabel(item.paymentMode), (amount) => amount + item.amount.minorUnits,
+                ifAbsent: () => item.amount.minorUnits);
           }
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -179,16 +183,19 @@ class DashboardScreen extends StatelessWidget {
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 children: [
-                  SummaryCard(label: 'Income', amount: income, color: Colors.green),
-                  SummaryCard(label: 'Expenses', amount: expenses, color: Colors.red),
-                  SummaryCard(label: 'Net balance', amount: income - expenses, color: Colors.blue),
+                  SummaryCard(label: 'Income', amount: Money.fromMinorUnits(income, 'INR'), color: Colors.green),
+                  SummaryCard(label: 'Expenses', amount: Money.fromMinorUnits(expenses, 'INR'), color: Colors.red),
+                  SummaryCard(label: 'Net balance', amount: Money.fromMinorUnits(income - expenses, 'INR'), color: Colors.blue),
                 ],
               ),
               const SizedBox(height: 24),
               Text('Recent transactions', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               ...transactions.take(3).map(
-                    (transaction) => TransactionListTile(transaction: transaction),
+                    (transaction) => TransactionListTile(
+                      transaction: transaction,
+                      repository: repository,
+                    ),
                   ),
               const SizedBox(height: 20),
               Text('Spending by category', style: Theme.of(context).textTheme.titleMedium),
@@ -206,41 +213,136 @@ class DashboardScreen extends StatelessWidget {
       );
 }
 
-class TransactionsScreen extends StatelessWidget {
+class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({required this.repository, super.key});
 
   final TransactionRepository repository;
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<List<FinancialTransaction>>(
-        future: repository.getTransactions(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final transactions = snapshot.data!;
-          if (transactions.isEmpty) return const EmptyState(message: 'No transactions yet.');
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: transactions.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (_, index) => TransactionListTile(transaction: transactions[index]),
-          );
-        },
+  State<TransactionsScreen> createState() => _TransactionsScreenState();
+}
+
+class _TransactionsScreenState extends State<TransactionsScreen> {
+  static const _pageSize = 20;
+  final _merchantController = TextEditingController();
+  TransactionType? _transactionType;
+  PaymentMode? _paymentMode;
+  final _items = <FinancialTransaction>[];
+  var _total = 0;
+  var _loading = true;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load(reset: true);
+  }
+
+  @override
+  void dispose() {
+    _merchantController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load({required bool reset}) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final page = await widget.repository.getTransactions(
+        TransactionQuery(
+          limit: _pageSize,
+          offset: reset ? 0 : _items.length,
+          transactionType: _transactionType,
+          paymentMode: _paymentMode,
+          merchant: _merchantController.text.trim(),
+        ),
       );
+      if (!mounted) return;
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(reset ? page.items : [..._items, ...page.items]);
+        _total = page.total;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading && _items.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (_error != null && _items.isEmpty) {
+      return _RetryState(message: 'Could not load transactions.', onRetry: () => _load(reset: true));
+    }
+    return RefreshIndicator(
+      onRefresh: () => _load(reset: true),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _merchantController,
+            decoration: InputDecoration(
+              labelText: 'Search merchant',
+              suffixIcon: IconButton(icon: const Icon(Icons.search), onPressed: () => _load(reset: true)),
+            ),
+            onSubmitted: (_) => _load(reset: true),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              ChoiceChip(label: const Text('All'), selected: _transactionType == null, onSelected: (_) { setState(() => _transactionType = null); _load(reset: true); }),
+              ChoiceChip(label: const Text('Debits'), selected: _transactionType == TransactionType.debit, onSelected: (_) { setState(() => _transactionType = TransactionType.debit); _load(reset: true); }),
+              ChoiceChip(label: const Text('Credits'), selected: _transactionType == TransactionType.credit, onSelected: (_) { setState(() => _transactionType = TransactionType.credit); _load(reset: true); }),
+              ChoiceChip(label: const Text('UPI'), selected: _paymentMode == PaymentMode.upi, onSelected: (_) { setState(() => _paymentMode = _paymentMode == PaymentMode.upi ? null : PaymentMode.upi); _load(reset: true); }),
+              ChoiceChip(label: const Text('Card'), selected: _paymentMode == PaymentMode.card, onSelected: (_) { setState(() => _paymentMode = _paymentMode == PaymentMode.card ? null : PaymentMode.card); _load(reset: true); }),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_items.isEmpty) const EmptyState(message: 'No transactions match these filters.'),
+          ..._items.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TransactionListTile(
+                  transaction: item,
+                  repository: widget.repository,
+                ),
+              )),
+          if (_items.length < _total)
+            OutlinedButton(
+              onPressed: _loading ? null : () => _load(reset: false),
+              child: Text(_loading ? 'Loading…' : 'Load more'),
+            ),
+          if (_error != null && _items.isNotEmpty)
+            TextButton(onPressed: () => _load(reset: false), child: const Text('Retry loading more')),
+        ],
+      ),
+    );
+  }
 }
 
 class TransactionListTile extends StatelessWidget {
-  const TransactionListTile({required this.transaction, super.key});
+  const TransactionListTile({
+    required this.transaction,
+    required this.repository,
+    super.key,
+  });
 
   final FinancialTransaction transaction;
+  final TransactionRepository repository;
 
   @override
   Widget build(BuildContext context) => Card(
         child: ListTile(
-          leading: CircleAvatar(child: Text(transaction.category.icon)),
-          title: Text(transaction.merchant),
-          subtitle: Text('${transaction.category.name} • ${_dateLabel(transaction.date)}'),
+          leading: CircleAvatar(child: Text(transaction.category?.icon ?? '₹')),
+          title: Text(transaction.merchant ?? 'Unknown merchant'),
+          subtitle: Text('${transaction.category?.name ?? 'Uncategorized'} • ${_dateLabel(transaction.date)}'),
           trailing: Text(
-            '${transaction.type == TransactionType.debit ? '-' : '+'}${formatInr(transaction.amount)}',
+            '${transaction.type == TransactionType.debit ? '-' : '+'}${formatMoney(transaction.amount)}',
             style: TextStyle(
               color: transaction.type == TransactionType.debit ? Colors.red : Colors.green,
               fontWeight: FontWeight.bold,
@@ -248,7 +350,10 @@ class TransactionListTile extends StatelessWidget {
           ),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => TransactionDetailsScreen(transaction: transaction),
+              builder: (_) => TransactionDetailsScreen(
+                transactionId: transaction.id,
+                repository: repository,
+              ),
             ),
           ),
         ),
@@ -256,31 +361,65 @@ class TransactionListTile extends StatelessWidget {
 }
 
 class TransactionDetailsScreen extends StatelessWidget {
-  const TransactionDetailsScreen({required this.transaction, super.key});
+  const TransactionDetailsScreen({
+    required this.transactionId,
+    required this.repository,
+    super.key,
+  });
 
-  final FinancialTransaction transaction;
+  final String transactionId;
+  final TransactionRepository repository;
 
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Transaction details')),
-        body: ListView(
+        body: FutureBuilder<FinancialTransaction>(
+          future: repository.getTransaction(transactionId),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return _RetryState(
+                message: 'Could not load transaction details.',
+                onRetry: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => TransactionDetailsScreen(
+                      transactionId: transactionId,
+                      repository: repository,
+                    ),
+                  ),
+                ),
+              );
+            }
+            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+            return _TransactionDetailsBody(transaction: snapshot.data!);
+          },
+        ),
+      );
+}
+
+class _TransactionDetailsBody extends StatelessWidget {
+  const _TransactionDetailsBody({required this.transaction});
+  final FinancialTransaction transaction;
+
+  @override
+  Widget build(BuildContext context) => ListView(
           padding: const EdgeInsets.all(20),
           children: [
             Icon(Icons.receipt_long_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 12),
-            Text(transaction.merchant, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
+            Text(transaction.merchant ?? 'Unknown merchant', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
-            Text(formatInr(transaction.amount), textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
+            Text(formatMoney(transaction.amount), textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 28),
             _DetailRow(label: 'Type', value: transaction.type.name.toUpperCase()),
-            _DetailRow(label: 'Category', value: transaction.category.name),
+            _DetailRow(label: 'Category', value: transaction.category?.name ?? 'Uncategorized'),
             _DetailRow(label: 'Payment mode', value: _paymentModeLabel(transaction.paymentMode)),
-            _DetailRow(label: 'Account', value: transaction.accountName),
+            _DetailRow(label: 'Account', value: transaction.accountName ?? transaction.accountLast4 ?? 'Not available'),
+            _DetailRow(label: 'Bank', value: transaction.bankName ?? 'Not available'),
+            _DetailRow(label: 'Reference', value: transaction.referenceId ?? 'Not available'),
             _DetailRow(label: 'Date', value: _dateLabel(transaction.date)),
-            _DetailRow(label: 'Description', value: transaction.description),
+            _DetailRow(label: 'Description', value: transaction.description ?? 'Not available'),
           ],
-        ),
-      );
+        );
 }
 
 class _DetailRow extends StatelessWidget {
@@ -299,9 +438,30 @@ class _DetailRow extends StatelessWidget {
       );
 }
 
+class _RetryState extends StatelessWidget {
+  const _RetryState({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      );
+}
+
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({required this.repository, super.key});
-  final TransactionRepository repository;
+  final ReferenceDataRepository repository;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<List<FinancialAccount>>(
@@ -319,7 +479,7 @@ class AccountsScreen extends StatelessWidget {
                   leading: const Icon(Icons.account_balance_outlined),
                   title: Text(account.name),
                   subtitle: Text('•••• ${account.last4}'),
-                  trailing: Text(formatInr(account.balance)),
+                  trailing: Text(formatMoney(account.balance)),
                 ),
               );
             },
@@ -330,7 +490,7 @@ class AccountsScreen extends StatelessWidget {
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({required this.repository, super.key});
-  final TransactionRepository repository;
+  final ReferenceDataRepository repository;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<List<Category>>(
