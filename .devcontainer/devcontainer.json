@@ -4,6 +4,9 @@
   "features": {
     "ghcr.io/devcontainers/features/sshd:1": {}
   },
+  "containerEnv": {
+    "DATABASE_URL": "${localEnv:DATABASE_URL}"
+  },
   "postCreateCommand": "python -m pip install --upgrade pip && python -m pip install -e '.[dev]'",
   "forwardPorts": [8000],
   "portsAttributes": {
