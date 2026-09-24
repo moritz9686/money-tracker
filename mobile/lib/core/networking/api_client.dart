@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
+
+import 'package:http/http.dart' as http;
 
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode});
@@ -21,12 +22,12 @@ class HttpApiClient implements ApiClient {
   HttpApiClient({
     required this.baseUrl,
     this.headers = const {},
-    HttpClient Function()? clientFactory,
-  }) : _clientFactory = clientFactory ?? HttpClient.new;
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   final String baseUrl;
   final Map<String, String> headers;
-  final HttpClient Function() _clientFactory;
+  final http.Client _client;
 
   @override
   Future<Map<String, dynamic>> get(
@@ -36,16 +37,14 @@ class HttpApiClient implements ApiClient {
     if (baseUrl.isEmpty) {
       throw const ApiException('API_BASE_URL has not been configured');
     }
-    final client = _clientFactory();
     try {
       final uri = Uri.parse(baseUrl).resolve(path).replace(
             queryParameters: queryParameters,
           );
-      final request = await client.getUrl(uri);
-      request.headers.contentType = ContentType.json;
-      headers.forEach(request.headers.set);
-      final response = await request.close().timeout(const Duration(seconds: 15));
-      final body = await response.transform(utf8.decoder).join();
+      final response = await _client
+          .get(uri, headers: {'Accept': 'application/json', ...headers})
+          .timeout(const Duration(seconds: 15));
+      final body = response.body;
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiException(
           _errorMessage(body) ?? 'Request failed',
@@ -57,14 +56,10 @@ class HttpApiClient implements ApiClient {
         throw const ApiException('Unexpected API response');
       }
       return decoded;
-    } on SocketException {
-      throw const ApiException('Unable to reach the server');
-    } on HttpException {
+    } on http.ClientException {
       throw const ApiException('Unable to reach the server');
     } on FormatException {
       throw const ApiException('Unexpected API response');
-    } finally {
-      client.close(force: true);
     }
   }
 

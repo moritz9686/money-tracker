@@ -12,4 +12,10 @@ class ApiConfig {
     'API_DEVELOPMENT_USER_ID',
     defaultValue: '',
   );
+
+  /// Used only by the public browser preview. Production mobile builds use FastAPI.
+  static const useMockData = bool.fromEnvironment(
+    'USE_MOCK_DATA',
+    defaultValue: false,
+  );
 }

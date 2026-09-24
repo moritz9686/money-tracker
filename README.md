@@ -70,6 +70,14 @@ flutter test
 `--dart-define`; never place API secrets, Supabase database URLs, bank credentials,
 or real transaction data in the mobile application.
 
+### Public browser preview
+
+Every push to `main` deploys a Flutter Web preview to GitHub Pages. It is built
+with `USE_MOCK_DATA=true` so it can be viewed safely without exposing a backend or
+credentials. It is a UI preview only; Android and iOS production builds continue
+to use FastAPI when `API_BASE_URL` is supplied. The deployment URL is available in
+the **Actions → Deploy mobile preview** workflow after the first successful run.
+
 ## Development model
 
 Use **GitHub Codespaces** for day-to-day backend development. The included devcontainer is a remote Python environment; it does not require Docker Desktop, PostgreSQL, Java, Gradle, local AI models, or any bank-related credentials on the developer's Mac.

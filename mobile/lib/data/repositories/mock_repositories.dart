@@ -57,3 +57,78 @@ class MockReferenceDataRepository implements ReferenceDataRepository {
       ];
 
 }
+
+/// Preview-only fixture data. Normal mobile builds use ApiTransactionRepository.
+class MockTransactionRepository implements TransactionRepository {
+  final _transactions = [
+    FinancialTransaction(
+      id: 'preview-1',
+      merchant: 'Monthly salary',
+      description: 'Salary credit',
+      amount: Money.fromApi('85000.00', 'INR'),
+      date: DateTime.now().subtract(const Duration(days: 1)),
+      type: TransactionType.credit,
+      paymentMode: PaymentMode.other,
+      category: MockReferenceDataRepository.salary,
+      accountName: 'Primary bank account',
+    ),
+    FinancialTransaction(
+      id: 'preview-2',
+      merchant: 'Swiggy',
+      description: 'Dinner order',
+      amount: Money.fromApi('540.00', 'INR'),
+      date: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
+      type: TransactionType.debit,
+      paymentMode: PaymentMode.upi,
+      category: MockReferenceDataRepository.food,
+      accountName: 'Primary bank account',
+    ),
+    FinancialTransaction(
+      id: 'preview-3',
+      merchant: 'Uber',
+      description: 'Trip to office',
+      amount: Money.fromApi('280.00', 'INR'),
+      date: DateTime.now().subtract(const Duration(days: 2)),
+      type: TransactionType.debit,
+      paymentMode: PaymentMode.upi,
+      category: MockReferenceDataRepository.transport,
+      accountName: 'Primary bank account',
+    ),
+    FinancialTransaction(
+      id: 'preview-4',
+      merchant: 'Netflix',
+      description: 'Monthly subscription',
+      amount: Money.fromApi('649.00', 'INR'),
+      date: DateTime.now().subtract(const Duration(days: 3)),
+      type: TransactionType.debit,
+      paymentMode: PaymentMode.card,
+      category: MockReferenceDataRepository.entertainment,
+      accountName: 'Travel card',
+    ),
+  ];
+
+  @override
+  Future<FinancialTransaction> getTransaction(String transactionId) async =>
+      _transactions.firstWhere((item) => item.id == transactionId);
+
+  @override
+  Future<TransactionPage> getTransactions(TransactionQuery query) async {
+    var filtered = _transactions.where((item) {
+      final merchant = query.merchant?.toLowerCase() ?? '';
+      return (query.transactionType == null || item.type == query.transactionType) &&
+          (query.paymentMode == null || item.paymentMode == query.paymentMode) &&
+          (merchant.isEmpty || (item.merchant?.toLowerCase().contains(merchant) ?? false));
+    }).toList();
+    filtered.sort((left, right) => query.sort == TransactionSort.desc
+        ? right.date.compareTo(left.date)
+        : left.date.compareTo(right.date));
+    final start = query.offset.clamp(0, filtered.length) as int;
+    final end = (start + query.limit).clamp(start, filtered.length) as int;
+    return TransactionPage(
+      items: filtered.sublist(start, end),
+      total: filtered.length,
+      limit: query.limit,
+      offset: query.offset,
+    );
+  }
+}

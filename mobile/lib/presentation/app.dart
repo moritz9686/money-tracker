@@ -20,15 +20,17 @@ class AppDependencies {
 
   factory AppDependencies.production() => AppDependencies(
         authRepository: MockAuthRepository(),
-        transactionRepository: ApiTransactionRepository(
-          HttpApiClient(
-            baseUrl: ApiConfig.baseUrl,
-            headers: {
-              if (ApiConfig.developmentUserId.isNotEmpty)
-                'X-Development-User-Id': ApiConfig.developmentUserId,
-            },
-          ),
-        ),
+        transactionRepository: ApiConfig.useMockData
+            ? MockTransactionRepository()
+            : ApiTransactionRepository(
+                HttpApiClient(
+                  baseUrl: ApiConfig.baseUrl,
+                  headers: {
+                    if (ApiConfig.developmentUserId.isNotEmpty)
+                      'X-Development-User-Id': ApiConfig.developmentUserId,
+                  },
+                ),
+              ),
         referenceDataRepository: MockReferenceDataRepository(),
       );
 }
