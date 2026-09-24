@@ -33,6 +33,8 @@ jobs:
       - run: flutter build web --release --base-href /money-tracker/ --dart-define=USE_MOCK_DATA=true
         working-directory: mobile
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: mobile/build/web
