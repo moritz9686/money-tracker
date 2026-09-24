@@ -85,14 +85,14 @@ class LoginScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Authentication will be connected to the backend in a later milestone. This build uses safe mock data.',
+                  'Authentication will be connected in a later milestone. Transaction data is loaded from your configured development API.',
                   textAlign: TextAlign.center,
                 ),
                 const Spacer(),
                 FilledButton.icon(
                   onPressed: () => _signIn(context),
                   icon: const Icon(Icons.login),
-                  label: const Text('Continue with demo data'),
+                  label: const Text('Continue in development mode'),
                 ),
               ],
             ),
