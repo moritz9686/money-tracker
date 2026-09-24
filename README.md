@@ -1,6 +1,65 @@
 # Money Tracker
 
-A cloud-first foundation for a personal finance transaction tracker. This milestone deliberately contains no financial ingestion, transaction models, credentials, or real financial data.
+A cloud-first personal finance transaction tracker with a FastAPI backend and a
+shared Flutter mobile client for Android and iOS. Development uses mock or
+anonymized data only; no financial ingestion is implemented in this repository.
+
+## Mobile application
+
+The Flutter app is in `mobile/`. It is a single shared Dart codebase intended for
+Android and iOS, with no Java, Gradle, local database, Docker Desktop, or local AI
+model requirement. It currently uses safe mock data while backend authentication is
+not available.
+
+The app includes Splash, Login, Dashboard, Transactions, Transaction Details,
+Accounts, Categories, and Settings screens. The dashboard provides income,
+expenses, net balance, recent activity, category spending, and payment-mode
+spending. It deliberately does **not** implement SMS, Gmail, Account Aggregator, or
+bank-statement parsing.
+
+The mobile layers are intentionally small:
+
+```text
+mobile/lib/core/        configuration and HTTP API-client abstraction
+mobile/lib/domain/      typed models and repository contracts
+mobile/lib/data/        mock repository implementations
+mobile/lib/presentation/ reusable widgets and screens
+```
+
+Authentication is isolated behind `AuthRepository`, so a future OAuth/backend
+implementation can replace the mock repository without changing screen code. The
+`ApiClient` abstraction is ready for a deployed FastAPI URL, configured at build
+time without committing credentials:
+
+```bash
+cd mobile
+flutter pub get
+flutter run --dart-define=API_BASE_URL=https://your-api.example.com
+```
+
+For a new clone, generate the standard native runners with a Flutter SDK in a cloud
+development environment, then run the shared app:
+
+```bash
+cd mobile
+flutter create --platforms=android,ios .
+flutter pub get
+flutter run
+```
+
+The generated `android/` and `ios/` folders are platform runners; all application
+logic remains in the shared `lib/` directory. Run mobile checks in Codespaces or an
+equivalent cloud environment:
+
+```bash
+cd mobile
+flutter analyze
+flutter test
+```
+
+`mobile/.env.example` is documentation only. Build-time configuration should use
+`--dart-define`; never place API secrets, Supabase database URLs, bank credentials,
+or real transaction data in the mobile application.
 
 ## Development model
 

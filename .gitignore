@@ -26,3 +26,4 @@ htmlcov/
 # Flutter build artifacts (for the future mobile app)
 mobile/.dart_tool/
 mobile/build/
+mobile/coverage/
