@@ -128,8 +128,8 @@ class MockTransactionRepository implements TransactionRepository {
     filtered.sort((left, right) => query.sort == TransactionSort.desc
         ? right.date.compareTo(left.date)
         : left.date.compareTo(right.date));
-    final start = query.offset.clamp(0, filtered.length) as int;
-    final end = (start + query.limit).clamp(start, filtered.length) as int;
+    final start = query.offset.clamp(0, filtered.length);
+    final end = (start + query.limit).clamp(start, filtered.length);
     return TransactionPage(
       items: filtered.sublist(start, end),
       total: filtered.length,

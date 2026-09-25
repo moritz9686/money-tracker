@@ -11,7 +11,7 @@ Future<void> main() async {
     }
     await Supabase.initialize(
       url: ApiConfig.supabaseUrl,
-      anonKey: ApiConfig.supabasePublishableKey,
+      publishableKey: ApiConfig.supabasePublishableKey,
     );
   }
   runApp(MoneyTrackerApp(dependencies: AppDependencies.production()));
