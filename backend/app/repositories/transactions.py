@@ -20,10 +20,10 @@ class TransactionRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def get_or_create_development_user(self, user_id: UUID) -> User:
+    def get_or_create_user(self, user_id: UUID, email: str | None) -> User:
         user = self.session.get(User, user_id)
         if user is None:
-            user = User(id=user_id, email=f"dev-{user_id}@local.invalid")
+            user = User(id=user_id, email=email or f"user-{user_id}@local.invalid")
             self.session.add(user)
             self.session.flush()
         return user

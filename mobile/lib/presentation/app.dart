@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/api_config.dart';
 import '../core/networking/api_client.dart';
 import '../data/repositories/api_transaction_repository.dart';
 import '../data/repositories/mock_repositories.dart';
+import '../data/repositories/supabase_auth_repository.dart';
 import '../domain/repositories/repositories.dart';
 import 'screens/app_screens.dart';
 
@@ -18,21 +20,25 @@ class AppDependencies {
   final TransactionRepository transactionRepository;
   final ReferenceDataRepository referenceDataRepository;
 
-  factory AppDependencies.production() => AppDependencies(
-        authRepository: MockAuthRepository(),
+  factory AppDependencies.production() {
+    final auth = ApiConfig.useMockData
+        ? MockAuthRepository()
+        : SupabaseAuthRepository(Supabase.instance.client);
+    return AppDependencies(
+        authRepository: auth,
         transactionRepository: ApiConfig.useMockData
             ? MockTransactionRepository()
             : ApiTransactionRepository(
                 HttpApiClient(
                   baseUrl: ApiConfig.baseUrl,
-                  headers: {
-                    if (ApiConfig.developmentUserId.isNotEmpty)
-                      'X-Development-User-Id': ApiConfig.developmentUserId,
+                  headersProvider: () => {
+                    if (auth.accessToken != null) 'Authorization': 'Bearer ${auth.accessToken}',
                   },
                 ),
               ),
         referenceDataRepository: MockReferenceDataRepository(),
       );
+  }
 }
 
 class MoneyTrackerApp extends StatelessWidget {

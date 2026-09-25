@@ -2,8 +2,10 @@ import '../models/financial_models.dart';
 
 abstract interface class AuthRepository {
   Future<bool> isSignedIn();
-  Future<void> signInForDevelopment();
+  Future<void> signIn(String email, String password);
+  Future<void> signUp(String email, String password);
   Future<void> signOut();
+  String? get accessToken;
 }
 
 abstract interface class TransactionRepository {

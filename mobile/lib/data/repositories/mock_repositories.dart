@@ -8,9 +8,15 @@ class MockAuthRepository implements AuthRepository {
   Future<bool> isSignedIn() async => _signedIn;
 
   @override
-  Future<void> signInForDevelopment() async {
+  Future<void> signIn(String email, String password) async {
     _signedIn = true;
   }
+
+  @override
+  Future<void> signUp(String email, String password) => signIn(email, password);
+
+  @override
+  String? get accessToken => null;
 
   @override
   Future<void> signOut() async {

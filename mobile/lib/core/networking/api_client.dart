@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:http/http.dart' as http;
 
@@ -22,11 +23,13 @@ class HttpApiClient implements ApiClient {
   HttpApiClient({
     required this.baseUrl,
     this.headers = const {},
+    this.headersProvider,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String baseUrl;
   final Map<String, String> headers;
+  final FutureOr<Map<String, String>> Function()? headersProvider;
   final http.Client _client;
 
   @override
@@ -41,8 +44,9 @@ class HttpApiClient implements ApiClient {
       final uri = Uri.parse(baseUrl).resolve(path).replace(
             queryParameters: queryParameters,
           );
+      final dynamicHeaders = await headersProvider?.call() ?? const <String, String>{};
       final response = await _client
-          .get(uri, headers: {'Accept': 'application/json', ...headers})
+          .get(uri, headers: {'Accept': 'application/json', ...headers, ...dynamicHeaders})
           .timeout(const Duration(seconds: 15));
       final body = response.body;
       if (response.statusCode < 200 || response.statusCode >= 300) {

@@ -50,16 +50,43 @@ class _SplashScreenState extends State<SplashScreen> {
       );
 }
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({required this.dependencies, super.key});
 
   final AppDependencies dependencies;
 
-  Future<void> _signIn(BuildContext context) async {
-    await dependencies.authRepository.signInForDevelopment();
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  String? _error;
+  bool _loading = false;
+
+  @override
+  void dispose() { _email.dispose(); _password.dispose(); super.dispose(); }
+
+  Future<void> _authenticate(BuildContext context, bool signUp) async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      if (signUp) {
+        await widget.dependencies.authRepository.signUp(_email.text.trim(), _password.text);
+        if (!await widget.dependencies.authRepository.isSignedIn()) {
+          if (mounted) setState(() => _error = 'Check your email to confirm the account, then sign in.');
+          return;
+        }
+      } else {
+        await widget.dependencies.authRepository.signIn(_email.text.trim(), _password.text);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Sign-in failed. Check your credentials or confirm your email.');
+      return;
+    } finally { if (mounted) setState(() => _loading = false); }
     if (!context.mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => AppShell(dependencies: dependencies)),
+      MaterialPageRoute(builder: (_) => AppShell(dependencies: widget.dependencies)),
     );
   }
 
@@ -85,15 +112,17 @@ class LoginScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Authentication will be connected in a later milestone. Transaction data is loaded from your configured development API.',
+                  'Sign in securely with Supabase. Passwords are never handled by this app server.',
                   textAlign: TextAlign.center,
                 ),
                 const Spacer(),
-                FilledButton.icon(
-                  onPressed: () => _signIn(context),
-                  icon: const Icon(Icons.login),
-                  label: const Text('Continue in development mode'),
-                ),
+                TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
+                const SizedBox(height: 8),
+                TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
+                if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: const TextStyle(color: Colors.red))),
+                const SizedBox(height: 12),
+                FilledButton(onPressed: _loading ? null : () => _authenticate(context, false), child: Text(_loading ? 'Please wait…' : 'Sign in')),
+                TextButton(onPressed: _loading ? null : () => _authenticate(context, true), child: const Text('Create account')),
               ],
             ),
           ),

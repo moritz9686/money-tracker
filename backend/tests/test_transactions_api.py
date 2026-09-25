@@ -6,12 +6,12 @@ from uuid import UUID
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.api.dependencies import DEFAULT_DEVELOPMENT_USER_ID, get_transaction_service
+from app.api.dependencies import get_transaction_service
 from app.core.errors import ConflictError, NotFoundError
 from app.db.models import PaymentMode, TransactionSource, TransactionType
 from app.main import app
 
-USER_ID = DEFAULT_DEVELOPMENT_USER_ID
+USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 ACCOUNT_ID = UUID("00000000-0000-0000-0000-000000000010")
 CATEGORY_ID = UUID("00000000-0000-0000-0000-000000000020")
 TRANSACTION_ID = UUID("00000000-0000-0000-0000-000000000030")

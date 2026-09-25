@@ -185,6 +185,30 @@ The small, pre-ping-enabled application pool prevents stale connections while
 leaving primary pooling to Supabase. Keep pool limits conservative for the
 Supabase plan and the expected number of API workers.
 
+## Supabase Auth
+
+FastAPI transaction endpoints require `Authorization: Bearer <Supabase access token>`.
+The backend verifies the signature, issuer/audience, expiry, and JWT subject before
+using that subject as the user scope. It never accepts a user ID from a client
+header. Set `SUPABASE_URL` plus either asymmetric JWT signing keys (JWKS) or the
+backend-only `SUPABASE_JWT_SECRET` for legacy HS256 projects. Never expose the JWT
+secret to Flutter.
+
+Flutter configuration uses build definitions only:
+
+```bash
+flutter run \
+  --dart-define=API_BASE_URL=https://api.example.com \
+  --dart-define=SUPABASE_URL=https://your-project.supabase.co \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+The publishable key is intended for client use; passwords, access tokens, refresh
+tokens, and database credentials are never committed. Supabase SDK storage manages
+the mobile session and refresh lifecycle. Every transaction repository lookup is
+scoped by the verified JWT subject; mismatched transaction, account, or category
+IDs return not found, preventing IDOR access.
+
 Run migrations in Codespaces only after setting `DATABASE_URL`:
 
 ```bash

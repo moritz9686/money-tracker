@@ -9,6 +9,12 @@ class ApplicationError(Exception):
     message = "An unexpected error occurred"
 
 
+class AuthenticationError(ApplicationError):
+    status_code = 401
+    code = "AUTHENTICATION_ERROR"
+    message = "Authentication failed"
+
+
 class NotFoundError(ApplicationError):
     status_code = 404
     code = "NOT_FOUND"

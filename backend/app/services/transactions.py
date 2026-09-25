@@ -11,12 +11,15 @@ from app.schemas.transaction import TransactionCreate, TransactionUpdate
 
 
 class TransactionService:
-    def __init__(self, repository: TransactionRepository, user_id: UUID) -> None:
+    def __init__(
+        self, repository: TransactionRepository, user_id: UUID, email: str | None = None
+    ) -> None:
         self.repository = repository
         self.user_id = user_id
+        self.email = email
 
     def create(self, payload: TransactionCreate) -> Transaction:
-        self.repository.get_or_create_development_user(self.user_id)
+        self.repository.get_or_create_user(self.user_id, self.email)
         self._validate_account(payload.account_id)
         self._validate_category(payload.category_id)
         transaction = Transaction(user_id=self.user_id, **payload.model_dump())
