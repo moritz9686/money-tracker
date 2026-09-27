@@ -72,11 +72,12 @@ or real transaction data in the mobile application.
 
 ### Public browser preview
 
-Every push to `main` deploys a Flutter Web preview to GitHub Pages. It is built
-with `USE_MOCK_DATA=true` so it can be viewed safely without exposing a backend or
-credentials. It is a UI preview only; Android and iOS production builds continue
-to use FastAPI when `API_BASE_URL` is supplied. The deployment URL is available in
-the **Actions → Deploy mobile preview** workflow after the first successful run.
+Every push to `main` deploys a Flutter Web preview to GitHub Pages. The preview
+uses the live FastAPI backend and Supabase Auth. Before running the workflow, set
+the Actions variable `API_BASE_URL` and the Actions secrets `SUPABASE_URL` and
+`SUPABASE_PUBLISHABLE_KEY`. Never add backend or database secrets to the Flutter
+build. The deployment URL is available in the **Actions → Deploy mobile preview**
+workflow after the first successful run.
 
 ## Development model
 

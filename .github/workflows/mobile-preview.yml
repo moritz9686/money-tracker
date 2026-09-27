@@ -30,7 +30,27 @@ jobs:
           channel: stable
       - run: flutter pub get
         working-directory: mobile
-      - run: flutter build web --release --base-href /money-tracker/ --dart-define=USE_MOCK_DATA=true
+      - name: Validate live preview configuration
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$API_BASE_URL" || { echo "Missing Actions variable: API_BASE_URL"; exit 1; }
+          test -n "$SUPABASE_URL" || { echo "Missing Actions secret: SUPABASE_URL"; exit 1; }
+          test -n "$SUPABASE_PUBLISHABLE_KEY" || { echo "Missing Actions secret: SUPABASE_PUBLISHABLE_KEY"; exit 1; }
+      - name: Build live Flutter web preview
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: >-
+          flutter build web --release
+          --base-href /money-tracker/
+          --dart-define=USE_MOCK_DATA=false
+          --dart-define=API_BASE_URL="$API_BASE_URL"
+          --dart-define=SUPABASE_URL="$SUPABASE_URL"
+          --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
         working-directory: mobile
       - uses: actions/configure-pages@v5
         with:
