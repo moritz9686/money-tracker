@@ -63,8 +63,8 @@ def parse_transaction_email(
     )
     last4 = _LAST4.search(text)
     merchant_match = re.search(
-        r"(?:at|to|from)\s+([A-Za-z][A-Za-z0-9 .&-]{1,80})", text, re.I
-    )
+        r"(?:\bat|\bto)\s+([A-Za-z][A-Za-z0-9 &-]{1,80})", text, re.I
+    ) or re.search(r"\bfrom\s+([A-Za-z][A-Za-z0-9 &-]{1,80})", text, re.I)
     bank_match = re.search(r"^([A-Za-z][A-Za-z ]{2,40})(?:\s*:|\s+alert)", text)
     reference = _REFERENCE.search(text)
     upi = _UPI.search(text)

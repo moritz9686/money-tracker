@@ -7,6 +7,9 @@ domain and enforce HTTPS before a public mobile release.
 ## Deploy
 
 1. Create a Render account and choose **New → Blueprint** for this repository.
+   The Blueprint explicitly uses Render's `free` web-service plan and does not
+   require a payment method. Free services can sleep and are for staging/testing,
+   not a public financial-data production launch.
 2. Review `render.yaml`; do not place values in it.
 3. In Render, set the required secret environment variables below.
 4. Set `CORS_ALLOWED_ORIGINS` to exact trusted origins, comma separated. Never use
@@ -23,6 +26,10 @@ domain and enforce HTTPS before a public mobile release.
 | `DATABASE_URL` | Supabase transaction-pooler URL with `postgresql+psycopg://` |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_JWT_SECRET` | Server-only legacy HS256 secret; omit when using asymmetric JWKS |
+| `GMAIL_CLIENT_ID` | Backend-only Google OAuth web client ID |
+| `GMAIL_CLIENT_SECRET` | Backend-only Google OAuth client secret |
+| `GMAIL_REDIRECT_URI` | Exact Render HTTPS callback ending in `/auth/gmail/callback` |
+| `GMAIL_OAUTH_STATE_SECRET` | Random 32-byte-or-longer state-signing secret |
 | `CORS_ALLOWED_ORIGINS` | Exact browser origins only, for example `https://app.example.com` |
 
 Optional: `DATABASE_POOL_SIZE`, `DATABASE_MAX_OVERFLOW`,

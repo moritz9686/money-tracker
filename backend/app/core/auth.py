@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 import jwt
-from jwt import InvalidTokenError, PyJWKClient
+from jwt import InvalidTokenError, PyJWKClient, PyJWKClientError
 
 from app.core.config import Settings, get_settings
 from app.core.errors import AuthenticationError
@@ -27,7 +27,8 @@ class SupabaseTokenValidator:
 
     def validate(self, token: str) -> AuthenticatedUser:
         try:
-            if self.settings.supabase_jwt_secret:
+            algorithm = jwt.get_unverified_header(token).get("alg")
+            if algorithm == "HS256" and self.settings.supabase_jwt_secret:
                 claims = jwt.decode(
                     token,
                     self.settings.supabase_jwt_secret,
@@ -35,12 +36,15 @@ class SupabaseTokenValidator:
                     audience=self.settings.supabase_jwt_audience,
                     options={"require": ["exp", "sub"]},
                 )
-            elif self._jwks_client and self.settings.supabase_url:
-                key = self._jwks_client.get_signing_key_from_jwt(token).key
+            elif algorithm in {"RS256", "ES256"} and self.settings.supabase_url:
+                jwks_client = self._jwks_client or PyJWKClient(
+                    self.settings.supabase_jwks_url or ""
+                )
+                key = jwks_client.get_signing_key_from_jwt(token).key
                 claims = jwt.decode(
                     token,
                     key,
-                    algorithms=["RS256", "ES256"],
+                    algorithms=[algorithm],
                     audience=self.settings.supabase_jwt_audience,
                     issuer=f"{self.settings.supabase_url.rstrip('/')}/auth/v1",
                     options={"require": ["exp", "sub"]},
@@ -48,5 +52,5 @@ class SupabaseTokenValidator:
             else:
                 raise AuthenticationError("Authentication is not configured")
             return AuthenticatedUser(id=UUID(claims["sub"]), email=claims.get("email"))
-        except (InvalidTokenError, KeyError, ValueError) as error:
+        except (InvalidTokenError, PyJWKClientError, KeyError, ValueError) as error:
             raise AuthenticationError("Invalid or expired access token") from error

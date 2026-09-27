@@ -60,6 +60,10 @@ class TransactionService:
         if self.repository.get_account(account_id, self.user_id) is None:
             raise NotFoundError()
 
+    def ensure_account_owned(self, account_id: UUID) -> None:
+        """Public ownership check for source-connection workflows."""
+        self._validate_account(account_id)
+
     def _validate_category(self, category_id: UUID | None) -> None:
         if (
             category_id

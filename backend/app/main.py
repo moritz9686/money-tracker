@@ -9,7 +9,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
+from app.api.routes.accounts import router as accounts_router
 from app.api.routes.analytics import router as analytics_router
+from app.api.routes.gmail import router as gmail_router
 from app.api.routes.transactions import router as transactions_router
 from app.core.config import get_settings
 from app.core.errors import ApplicationError
@@ -53,7 +55,9 @@ app.add_middleware(
     window_seconds=settings.rate_limit_window_seconds,
 )
 app.include_router(transactions_router)
+app.include_router(accounts_router)
 app.include_router(analytics_router)
+app.include_router(gmail_router)
 
 
 @app.exception_handler(ApplicationError)

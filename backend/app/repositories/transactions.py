@@ -35,6 +35,21 @@ class TransactionRepository:
             )
         )
 
+    def create_account(self, account: FinancialAccount) -> FinancialAccount:
+        self.session.add(account)
+        self.session.flush()
+        self.session.refresh(account)
+        return account
+
+    def list_accounts(self, user_id: UUID) -> list[FinancialAccount]:
+        return list(
+            self.session.scalars(
+                select(FinancialAccount)
+                .where(FinancialAccount.user_id == user_id)
+                .order_by(FinancialAccount.display_name, FinancialAccount.id)
+            ).all()
+        )
+
     def get_category(self, category_id: UUID, user_id: UUID) -> Category | None:
         return self.session.scalar(
             select(Category).where(

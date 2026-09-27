@@ -49,3 +49,15 @@ def test_validator_rejects_expired_token() -> None:
         validator.validate(
             _token(secret, exp=datetime.now(timezone.utc) - timedelta(1))
         )
+
+
+def test_hs256_uses_legacy_secret_when_supabase_url_is_also_set() -> None:
+    secret = "test-secret-that-is-at-least-thirty-two-bytes"
+    validator = SupabaseTokenValidator(
+        Settings(
+            supabase_url="https://example.supabase.co",
+            supabase_jwt_secret=secret,
+        )
+    )
+
+    assert validator.validate(_token(secret)).id == USER_ID
