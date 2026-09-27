@@ -12,7 +12,7 @@ class _StatementImportScreenState extends State<StatementImportScreen> {
   static const _maximumBytes = 15 * 1024 * 1024;
   PlatformFile? _file;
   String? _error;
-  bool _uploading = false;
+  final bool _uploading = false;
 
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
