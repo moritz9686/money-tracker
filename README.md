@@ -203,6 +203,11 @@ flutter run \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
 
+For local Flutter development, copy `mobile/.env.json.example` to the ignored
+`mobile/.env.json`, put only the API URL, Supabase URL, and publishable key there,
+then run `flutter run --dart-define-from-file=.env.json`. Do not put a JWT secret,
+database URL, password, access token, or refresh token in that file.
+
 The publishable key is intended for client use; passwords, access tokens, refresh
 tokens, and database credentials are never committed. Supabase SDK storage manages
 the mobile session and refresh lifecycle. Every transaction repository lookup is

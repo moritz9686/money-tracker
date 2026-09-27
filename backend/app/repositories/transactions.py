@@ -112,12 +112,13 @@ class TransactionRepository:
         self.session.flush()
 
     def find_by_source_fingerprint(
-        self, source: TransactionSource, source_fingerprint: str
+        self, user_id: UUID, source: TransactionSource, source_fingerprint: str
     ) -> Transaction | None:
         return self.session.scalar(
             select(Transaction)
             .join(TransactionSourceRecord)
             .where(
+                Transaction.user_id == user_id,
                 TransactionSourceRecord.source == source,
                 TransactionSourceRecord.source_fingerprint == source_fingerprint,
             )

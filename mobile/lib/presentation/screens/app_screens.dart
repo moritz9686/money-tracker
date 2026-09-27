@@ -4,6 +4,7 @@ import '../../domain/models/financial_models.dart';
 import '../../domain/repositories/repositories.dart';
 import '../app.dart';
 import '../widgets/finance_widgets.dart';
+import 'statement_import_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({required this.dependencies, super.key});
@@ -153,7 +154,12 @@ class _AppShellState extends State<AppShell> {
     ];
     const titles = ['Dashboard', 'Transactions', 'Accounts', 'Categories', 'Settings'];
     return Scaffold(
-      appBar: AppBar(title: Text(titles[_selectedIndex])),
+      appBar: AppBar(
+        title: Text(titles[_selectedIndex]),
+        actions: _selectedIndex == 1
+            ? [IconButton(icon: const Icon(Icons.upload_file_outlined), tooltip: 'Import statement', onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StatementImportScreen())))]
+            : null,
+      ),
       body: pages[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,

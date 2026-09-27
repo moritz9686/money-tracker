@@ -1,14 +1,19 @@
 """FastAPI application entry point."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
 
+from app.api.routes.analytics import router as analytics_router
 from app.api.routes.transactions import router as transactions_router
+from app.core.config import get_settings
 from app.core.errors import ApplicationError
+from app.core.rate_limit import RateLimitMiddleware
 from app.db.session import (
     DatabaseUnavailableError,
     check_database_connection,
@@ -23,14 +28,32 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     dispose_engine()
 
 
+settings = get_settings()
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
 app = FastAPI(
     title="Money Tracker API",
     version="0.1.0",
-    docs_url="/docs",
+    docs_url="/docs" if settings.api_docs_enabled else None,
     redoc_url=None,
     lifespan=lifespan,
 )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+    max_age=600,
+)
+app.add_middleware(
+    RateLimitMiddleware,
+    requests=settings.rate_limit_requests,
+    window_seconds=settings.rate_limit_window_seconds,
+)
 app.include_router(transactions_router)
+app.include_router(analytics_router)
 
 
 @app.exception_handler(ApplicationError)

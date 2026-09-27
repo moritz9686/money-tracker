@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     supabase_url: str | None = None
     supabase_jwt_secret: str | None = None
     supabase_jwt_audience: str = "authenticated"
+    ai_provider: str | None = None
+    ai_api_key: str | None = None
+    cors_allowed_origins: str = ""
+    rate_limit_requests: int = Field(default=120, ge=1, le=10000)
+    rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
+    api_docs_enabled: bool = True
 
     @field_validator("database_url")
     @classmethod
@@ -32,11 +38,29 @@ class Settings(BaseSettings):
             raise ValueError(msg)
         return value
 
+    @field_validator("supabase_jwt_secret")
+    @classmethod
+    def validate_jwt_secret(cls, value: str | None) -> str | None:
+        if value is not None and len(value) < 32:
+            raise ValueError("SUPABASE_JWT_SECRET must be at least 32 characters")
+        return value
+
     @property
     def supabase_jwks_url(self) -> str | None:
         if self.supabase_url is None:
             return None
         return f"{self.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origins = [
+            item.strip()
+            for item in self.cors_allowed_origins.split(",")
+            if item.strip()
+        ]
+        if self.app_env == "production" and "*" in origins:
+            raise ValueError("CORS_ALLOWED_ORIGINS cannot contain * in production")
+        return origins
 
 
 @lru_cache

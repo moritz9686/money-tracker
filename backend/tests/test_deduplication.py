@@ -28,18 +28,20 @@ class InMemoryDeduplicationRepository:
         self.source_records: list[TransactionSourceRecord] = []
 
     def find_by_source_fingerprint(
-        self, source: TransactionSource, source_fingerprint: str
+        self, user_id: UUID, source: TransactionSource, source_fingerprint: str
     ) -> Transaction | None:
         for record in self.source_records:
             if (
                 record.source == source
                 and record.source_fingerprint == source_fingerprint
             ):
-                return next(
+                transaction = next(
                     item
                     for item in self.transactions
                     if item.id == record.transaction_id
                 )
+                if transaction.user_id == user_id:
+                    return transaction
         return None
 
     def find_by_reference(self, user_id: UUID, reference_id: str) -> Transaction | None:

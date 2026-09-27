@@ -110,7 +110,7 @@ class TransactionDeduplicationRepository:
     """Persistence protocol implemented by the transaction repository."""
 
     def find_by_source_fingerprint(
-        self, source: TransactionSource, source_fingerprint: str
+        self, user_id: UUID, source: TransactionSource, source_fingerprint: str
     ) -> Transaction | None:
         raise NotImplementedError
 
@@ -143,7 +143,7 @@ class TransactionDeduplicationService:
         )
 
         existing = self.repository.find_by_source_fingerprint(
-            candidate.source, source_fingerprint
+            candidate.user_id, candidate.source, source_fingerprint
         )
         if existing:
             return DeduplicationResult(

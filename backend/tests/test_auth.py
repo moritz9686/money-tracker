@@ -39,3 +39,13 @@ def test_validator_rejects_invalid_tokens(token: str) -> None:
     )
     with pytest.raises(AuthenticationError):
         validator.validate(token)
+
+
+def test_validator_rejects_expired_token() -> None:
+    secret = "test-secret-that-is-at-least-thirty-two-bytes"
+    validator = SupabaseTokenValidator(Settings(supabase_jwt_secret=secret))
+
+    with pytest.raises(AuthenticationError, match="Invalid or expired"):
+        validator.validate(
+            _token(secret, exp=datetime.now(timezone.utc) - timedelta(1))
+        )
