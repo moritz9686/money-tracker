@@ -76,3 +76,7 @@ abstract interface class ReferenceDataRepository {
   Future<List<FinancialAccount>> getAccounts();
   Future<List<Category>> getCategories();
 }
+
+abstract interface class GmailRepository {
+  Future<Uri> createAuthorizationUrl(String accountId);
+}

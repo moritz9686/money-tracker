@@ -10,6 +10,13 @@ class FakeApiClient implements ApiClient {
   Map<String, String>? queryParameters;
 
   @override
+  Future<Object?> getValue(
+    String requestedPath, {
+    Map<String, String>? queryParameters,
+  }) =>
+      get(requestedPath, queryParameters: queryParameters);
+
+  @override
   Future<Map<String, dynamic>> get(
     String requestedPath, {
     Map<String, String>? queryParameters,
@@ -41,7 +48,8 @@ const _transactionJson = {
 };
 
 void main() {
-  test('transaction repository maps a backend page and sends filters', () async {
+  test('transaction repository maps a backend page and sends filters',
+      () async {
     final client = FakeApiClient();
     final page = await ApiTransactionRepository(client).getTransactions(
       const TransactionQuery(
@@ -62,7 +70,8 @@ void main() {
     expect(page.items.single.merchant, 'Swiggy');
   });
 
-  test('money formatting retains two decimal places without floating point', () {
+  test('money formatting retains two decimal places without floating point',
+      () {
     expect(formatMoney(Money.fromApi('500.25', 'INR')), '₹500.25');
     expect(formatMoney(Money.fromApi('-540.00', 'INR')), '-₹540');
   });

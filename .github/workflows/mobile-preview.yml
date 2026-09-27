@@ -30,6 +30,10 @@ jobs:
           channel: stable
       - run: flutter pub get
         working-directory: mobile
+      - run: flutter analyze
+        working-directory: mobile
+      - run: flutter test
+        working-directory: mobile
       - name: Validate live preview configuration
         env:
           API_BASE_URL: ${{ vars.API_BASE_URL }}

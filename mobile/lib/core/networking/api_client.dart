@@ -11,6 +11,11 @@ class ApiException implements Exception {
 }
 
 abstract interface class ApiClient {
+  Future<Object?> getValue(
+    String path, {
+    Map<String, String>? queryParameters,
+  });
+
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, String>? queryParameters,
@@ -33,7 +38,7 @@ class HttpApiClient implements ApiClient {
   final http.Client _client;
 
   @override
-  Future<Map<String, dynamic>> get(
+  Future<Object?> getValue(
     String path, {
     Map<String, String>? queryParameters,
   }) async {
@@ -55,16 +60,24 @@ class HttpApiClient implements ApiClient {
           statusCode: response.statusCode,
         );
       }
-      final decoded = jsonDecode(body);
-      if (decoded is! Map<String, dynamic>) {
-        throw const ApiException('Unexpected API response');
-      }
-      return decoded;
+      return jsonDecode(body);
     } on http.ClientException {
       throw const ApiException('Unable to reach the server');
     } on FormatException {
       throw const ApiException('Unexpected API response');
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, String>? queryParameters,
+  }) async {
+    final decoded = await getValue(path, queryParameters: queryParameters);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ApiException('Unexpected API response');
+    }
+    return decoded;
   }
 
   String? _errorMessage(String body) {

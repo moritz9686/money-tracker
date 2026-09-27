@@ -5,6 +5,7 @@ import '../../domain/repositories/repositories.dart';
 import '../app.dart';
 import '../widgets/finance_widgets.dart';
 import 'statement_import_screen.dart';
+import 'gmail_import_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({required this.dependencies, super.key});
@@ -142,12 +143,27 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   var _selectedIndex = 0;
+  var _dataRevision = 0;
+
+  Future<void> _openGmailImport() async {
+    final gmailRepository = widget.dependencies.gmailRepository;
+    if (gmailRepository == null) return;
+    final imported = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => GmailImportScreen(
+          gmailRepository: gmailRepository,
+          referenceDataRepository: widget.dependencies.referenceDataRepository,
+        ),
+      ),
+    );
+    if (imported == true && mounted) setState(() => _dataRevision++);
+  }
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      DashboardScreen(repository: widget.dependencies.transactionRepository),
-      TransactionsScreen(repository: widget.dependencies.transactionRepository),
+      DashboardScreen(key: ValueKey('dashboard-$_dataRevision'), repository: widget.dependencies.transactionRepository),
+      TransactionsScreen(key: ValueKey('transactions-$_dataRevision'), repository: widget.dependencies.transactionRepository),
       AccountsScreen(repository: widget.dependencies.referenceDataRepository),
       CategoriesScreen(repository: widget.dependencies.referenceDataRepository),
       SettingsScreen(dependencies: widget.dependencies),
@@ -157,7 +173,15 @@ class _AppShellState extends State<AppShell> {
       appBar: AppBar(
         title: Text(titles[_selectedIndex]),
         actions: _selectedIndex == 1
-            ? [IconButton(icon: const Icon(Icons.upload_file_outlined), tooltip: 'Import statement', onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StatementImportScreen())))]
+            ? [
+                if (widget.dependencies.gmailRepository != null)
+                  IconButton(
+                    icon: const Icon(Icons.mail_outline),
+                    tooltip: 'Import from Gmail',
+                    onPressed: _openGmailImport,
+                  ),
+                IconButton(icon: const Icon(Icons.upload_file_outlined), tooltip: 'Import statement', onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StatementImportScreen()))),
+              ]
             : null,
       ),
       body: pages[_selectedIndex],
@@ -567,10 +591,10 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const ListTile(
+          ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('Demo mode'),
-            subtitle: Text('All information displayed is mock data.'),
+            title: Text('Connected mode'),
+            subtitle: Text('Transactions and accounts are loaded from your secure backend.'),
           ),
           const Divider(),
           ListTile(

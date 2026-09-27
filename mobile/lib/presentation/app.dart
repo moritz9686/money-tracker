@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/api_config.dart';
 import '../core/networking/api_client.dart';
 import '../data/repositories/api_transaction_repository.dart';
+import '../data/repositories/api_gmail_repository.dart';
+import '../data/repositories/api_reference_data_repository.dart';
 import '../data/repositories/mock_repositories.dart';
 import '../data/repositories/supabase_auth_repository.dart';
 import '../domain/repositories/repositories.dart';
@@ -14,29 +16,33 @@ class AppDependencies {
     required this.authRepository,
     required this.transactionRepository,
     required this.referenceDataRepository,
+    required this.gmailRepository,
   });
 
   final AuthRepository authRepository;
   final TransactionRepository transactionRepository;
   final ReferenceDataRepository referenceDataRepository;
+  final GmailRepository? gmailRepository;
 
   factory AppDependencies.production() {
     final auth = ApiConfig.useMockData
         ? MockAuthRepository()
         : SupabaseAuthRepository(Supabase.instance.client);
+    final client = HttpApiClient(
+      baseUrl: ApiConfig.baseUrl,
+      headersProvider: () => {
+        if (auth.accessToken != null) 'Authorization': 'Bearer ${auth.accessToken}',
+      },
+    );
     return AppDependencies(
         authRepository: auth,
         transactionRepository: ApiConfig.useMockData
             ? MockTransactionRepository()
-            : ApiTransactionRepository(
-                HttpApiClient(
-                  baseUrl: ApiConfig.baseUrl,
-                  headersProvider: () => {
-                    if (auth.accessToken != null) 'Authorization': 'Bearer ${auth.accessToken}',
-                  },
-                ),
-              ),
-        referenceDataRepository: MockReferenceDataRepository(),
+            : ApiTransactionRepository(client),
+        referenceDataRepository: ApiConfig.useMockData
+            ? MockReferenceDataRepository()
+            : ApiReferenceDataRepository(client),
+        gmailRepository: ApiConfig.useMockData ? null : ApiGmailRepository(client),
       );
   }
 }
