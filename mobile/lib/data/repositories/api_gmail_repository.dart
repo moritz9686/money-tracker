@@ -19,4 +19,18 @@ class ApiGmailRepository implements GmailRepository {
     }
     return uri;
   }
+
+  @override
+  Future<GmailSyncResult> sync() async {
+    final response = await _client.post('/gmail/sync');
+    final imported = response['imported'];
+    final reauthorizationRequired = response['reauthorization_required'];
+    if (imported is! int || reauthorizationRequired is! int) {
+      throw const ApiException('Unexpected Gmail sync response');
+    }
+    return GmailSyncResult(
+      imported: imported,
+      reauthorizationRequired: reauthorizationRequired,
+    );
+  }
 }

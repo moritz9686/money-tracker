@@ -30,11 +30,17 @@ class GmailImportResult:
     unrecognized: int
 
 
+@dataclass(frozen=True)
+class GoogleAuthorizationTokens:
+    access_token: str
+    refresh_token: str | None
+
+
 class GmailApiClient:
     def __init__(self, client: httpx.Client | None = None) -> None:
         self.client = client or httpx.Client(timeout=15.0)
 
-    def exchange_code(self, settings: Settings, code: str) -> str:
+    def exchange_code(self, settings: Settings, code: str) -> GoogleAuthorizationTokens:
         try:
             response = self.client.post(
                 "https://oauth2.googleapis.com/token",
@@ -47,12 +53,36 @@ class GmailApiClient:
                 },
             )
             response.raise_for_status()
+            payload = response.json()
+            token = payload.get("access_token")
+            if not isinstance(token, str) or not token:
+                raise GmailImportError("Google did not return an access token")
+            refresh_token = payload.get("refresh_token")
+            return GoogleAuthorizationTokens(
+                access_token=token,
+                refresh_token=refresh_token if isinstance(refresh_token, str) else None,
+            )
+        except (httpx.HTTPError, ValueError) as error:
+            raise GmailImportError("Google authorization failed") from error
+
+    def refresh_access_token(self, settings: Settings, refresh_token: str) -> str:
+        try:
+            response = self.client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "client_id": settings.gmail_client_id,
+                    "client_secret": settings.gmail_client_secret,
+                    "refresh_token": refresh_token,
+                    "grant_type": "refresh_token",
+                },
+            )
+            response.raise_for_status()
             token = response.json().get("access_token")
             if not isinstance(token, str) or not token:
                 raise GmailImportError("Google did not return an access token")
             return token
         except (httpx.HTTPError, ValueError) as error:
-            raise GmailImportError("Google authorization failed") from error
+            raise GmailImportError("Gmail connection needs reauthorization") from error
 
     def transaction_messages(self, access_token: str) -> list[dict[str, Any]]:
         headers = {"Authorization": f"Bearer {access_token}"}

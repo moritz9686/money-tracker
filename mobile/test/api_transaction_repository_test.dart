@@ -30,6 +30,9 @@ class FakeApiClient implements ApiClient {
       'offset': 0,
     };
   }
+
+  @override
+  Future<Map<String, dynamic>> post(String requestedPath) async => const {};
 }
 
 const _transactionJson = {

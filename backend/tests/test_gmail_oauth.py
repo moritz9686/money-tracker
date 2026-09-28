@@ -2,6 +2,7 @@ from urllib.parse import parse_qs, urlparse
 from uuid import UUID
 
 import pytest
+from cryptography.fernet import Fernet
 
 from app.core.config import Settings
 from app.services.gmail_oauth import (
@@ -18,6 +19,7 @@ def _settings() -> Settings:
         gmail_client_secret="client-secret",
         gmail_redirect_uri="http://localhost:8000/auth/gmail/callback",
         gmail_oauth_state_secret="state-secret",
+        gmail_token_encryption_key=Fernet.generate_key().decode(),
     )
 
 
@@ -29,7 +31,8 @@ def test_authorization_url_uses_readonly_scope_and_signed_state() -> None:
     )
     query = parse_qs(urlparse(request.authorization_url).query)
     assert query["scope"] == ["https://www.googleapis.com/auth/gmail.readonly"]
-    assert query["access_type"] == ["online"]
+    assert query["access_type"] == ["offline"]
+    assert query["prompt"] == ["consent"]
     assert query["redirect_uri"] == ["http://localhost:8000/auth/gmail/callback"]
     assert len(query["state"][0].split(".")) == 2
     assert request.expires_in_seconds == 600

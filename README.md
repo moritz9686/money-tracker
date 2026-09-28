@@ -15,8 +15,9 @@ The app includes Splash, Login, Dashboard, Transactions, Transaction Details,
 Accounts, Categories, and Settings screens. The transaction list and transaction
 detail view call the FastAPI backend; the dashboard is calculated from the returned
 transaction page. Accounts and Categories remain mock reference data because their
-backend endpoints do not exist yet. It deliberately does **not** implement SMS,
-Gmail, Account Aggregator, or bank-statement parsing.
+backend endpoints do not exist yet. Gmail can be connected once for bounded,
+encrypted-token background synchronization. It deliberately does **not** implement
+SMS, Account Aggregator, or bank-statement parsing.
 
 The mobile layers are intentionally small:
 

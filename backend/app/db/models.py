@@ -97,6 +97,9 @@ class User(Base):
     categories: Mapped[list["Category"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    gmail_connections: Mapped[list["GmailConnection"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class FinancialAccount(Base):
@@ -133,6 +136,49 @@ class FinancialAccount(Base):
 
     user: Mapped[User] = relationship(back_populates="accounts")
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="account")
+    gmail_connection: Mapped["GmailConnection | None"] = relationship(
+        back_populates="account", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class GmailConnection(Base):
+    """Encrypted Google refresh token for one user-owned financial account."""
+
+    __tablename__ = "gmail_connections"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "account_id", name="uq_gmail_connections_user_account"
+        ),
+        Index("ix_gmail_connections_due_sync", "is_active", "last_synced_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("financial_accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    encrypted_refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    reauthorization_required: Mapped[bool] = mapped_column(
+        default=False, nullable=False
+    )
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="gmail_connections")
+    account: Mapped[FinancialAccount] = relationship(back_populates="gmail_connection")
 
 
 class Category(Base):

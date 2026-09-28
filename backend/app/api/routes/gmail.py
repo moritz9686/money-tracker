@@ -21,6 +21,8 @@ from app.services.gmail_oauth import (
     build_authorization_request,
     verify_state,
 )
+from app.services.gmail_sync import GmailSyncService
+from app.services.gmail_tokens import GmailTokenCipher, GmailTokenError
 from app.services.transactions import TransactionService
 
 router = APIRouter(tags=["gmail"])
@@ -62,16 +64,29 @@ def gmail_callback(
     try:
         user_id, account_id = verify_state(settings.gmail_oauth_state_secret, state)
         api = GmailApiClient()
-        access_token = api.exchange_code(settings, code)
-        messages = api.transaction_messages(access_token)
-        result = GmailImportService(TransactionRepository(session)).import_messages(
+        tokens = api.exchange_code(settings, code)
+        repository = TransactionRepository(session)
+        if tokens.refresh_token is None:
+            raise GmailImportError("Google did not return a refresh token")
+        repository.upsert_gmail_connection(
+            user_id=user_id,
+            account_id=account_id,
+            encrypted_refresh_token=GmailTokenCipher(settings).encrypt(
+                tokens.refresh_token
+            ),
+        )
+        messages = api.transaction_messages(tokens.access_token)
+        result = GmailImportService(repository).import_messages(
             user_id=user_id, account_id=account_id, messages=messages
         )
+        connection = repository.get_gmail_connection(user_id, account_id)
+        if connection is not None:
+            repository.mark_gmail_connection_synced(connection)
     except GmailOAuthStateError as error:
         raise HTTPException(
             status_code=400, detail="Invalid Gmail authorization callback"
         ) from error
-    except GmailImportError as error:
+    except (GmailImportError, GmailTokenError) as error:
         raise HTTPException(status_code=502, detail="Gmail import failed") from error
     return {
         "status": "completed",
@@ -80,3 +95,34 @@ def gmail_callback(
         "duplicates": result.duplicates,
         "unrecognized": result.unrecognized,
     }
+
+
+@router.post("/gmail/sync")
+def sync_gmail(service: ServiceDependency) -> dict[str, int]:
+    """Sync connected Gmail accounts belonging only to the authenticated user."""
+    try:
+        result = GmailSyncService(service.repository, get_settings()).sync_user(
+            service.user_id
+        )
+    except GmailTokenError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Gmail synchronization is not configured",
+        ) from error
+    return {
+        "connections": result.connections,
+        "imported": result.imported,
+        "duplicates": result.duplicates,
+        "unrecognized": result.unrecognized,
+        "reauthorization_required": result.reauthorization_required,
+    }
+
+
+@router.delete(
+    "/gmail/connections/{account_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+def disconnect_gmail(account_id: UUID, service: ServiceDependency) -> None:
+    """Remove encrypted refresh-token material for the caller's account only."""
+    connection = service.repository.get_gmail_connection(service.user_id, account_id)
+    if connection is not None:
+        service.repository.delete_gmail_connection(connection)

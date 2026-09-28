@@ -1,6 +1,6 @@
 """SQLAlchemy persistence operations for user-scoped transactions."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import Select, func, or_, select
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.models import (
     Category,
     FinancialAccount,
+    GmailConnection,
     Transaction,
     TransactionSource,
     TransactionSourceRecord,
@@ -49,6 +50,65 @@ class TransactionRepository:
                 .order_by(FinancialAccount.display_name, FinancialAccount.id)
             ).all()
         )
+
+    def get_gmail_connection(
+        self, user_id: UUID, account_id: UUID
+    ) -> GmailConnection | None:
+        return self.session.scalar(
+            select(GmailConnection).where(
+                GmailConnection.user_id == user_id,
+                GmailConnection.account_id == account_id,
+            )
+        )
+
+    def upsert_gmail_connection(
+        self, *, user_id: UUID, account_id: UUID, encrypted_refresh_token: str
+    ) -> GmailConnection:
+        connection = self.get_gmail_connection(user_id, account_id)
+        if connection is None:
+            connection = GmailConnection(
+                user_id=user_id,
+                account_id=account_id,
+                encrypted_refresh_token=encrypted_refresh_token,
+            )
+            self.session.add(connection)
+        else:
+            connection.encrypted_refresh_token = encrypted_refresh_token
+            connection.is_active = True
+            connection.reauthorization_required = False
+        self.session.flush()
+        return connection
+
+    def list_due_gmail_connections(
+        self, before: datetime, limit: int
+    ) -> list[GmailConnection]:
+        return list(
+            self.session.scalars(
+                select(GmailConnection)
+                .where(
+                    GmailConnection.is_active.is_(True),
+                    GmailConnection.reauthorization_required.is_(False),
+                    (GmailConnection.last_synced_at.is_(None))
+                    | (GmailConnection.last_synced_at < before),
+                )
+                .order_by(
+                    GmailConnection.last_synced_at.nullsfirst(), GmailConnection.id
+                )
+                .limit(limit)
+            ).all()
+        )
+
+    def mark_gmail_connection_synced(self, connection: GmailConnection) -> None:
+        connection.last_synced_at = datetime.now(timezone.utc)
+        self.session.flush()
+
+    def require_gmail_reauthorization(self, connection: GmailConnection) -> None:
+        connection.reauthorization_required = True
+        self.session.flush()
+
+    def delete_gmail_connection(self, connection: GmailConnection) -> None:
+        self.session.delete(connection)
+        self.session.flush()
 
     def get_category(self, category_id: UUID, user_id: UUID) -> Category | None:
         return self.session.scalar(

@@ -44,7 +44,8 @@ def build_authorization_request(
             "redirect_uri": settings.gmail_redirect_uri,
             "response_type": "code",
             "scope": _GMAIL_READONLY_SCOPE,
-            "access_type": "online",
+            "access_type": "offline",
+            "prompt": "consent",
             "include_granted_scopes": "true",
             "state": state,
         }

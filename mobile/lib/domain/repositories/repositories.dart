@@ -79,4 +79,12 @@ abstract interface class ReferenceDataRepository {
 
 abstract interface class GmailRepository {
   Future<Uri> createAuthorizationUrl(String accountId);
+  Future<GmailSyncResult> sync();
+}
+
+class GmailSyncResult {
+  const GmailSyncResult({required this.imported, required this.reauthorizationRequired});
+
+  final int imported;
+  final int reauthorizationRequired;
 }

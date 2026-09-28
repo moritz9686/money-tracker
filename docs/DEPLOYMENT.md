@@ -30,9 +30,23 @@ domain and enforce HTTPS before a public mobile release.
 | `GMAIL_CLIENT_SECRET` | Backend-only Google OAuth client secret |
 | `GMAIL_REDIRECT_URI` | Exact Render HTTPS callback ending in `/auth/gmail/callback` |
 | `GMAIL_OAUTH_STATE_SECRET` | Random 32-byte-or-longer state-signing secret |
+| `GMAIL_TOKEN_ENCRYPTION_KEY` | Fernet key used only by the backend to encrypt Gmail refresh tokens at rest |
+| `GMAIL_BACKGROUND_SYNC_ENABLED` | `true` for one deployed API worker to perform bounded Gmail polling |
+| `GMAIL_SYNC_INTERVAL_SECONDS` | Poll interval; use `900` (15 minutes) or longer |
 | `CORS_ALLOWED_ORIGINS` | Exact browser origins only, for example `https://app.example.com` |
 
 Optional: `DATABASE_POOL_SIZE`, `DATABASE_MAX_OVERFLOW`,
+
+Generate `GMAIL_TOKEN_ENCRYPTION_KEY` once and keep it stable for the lifetime of
+the deployment; changing it makes existing Gmail connections unreadable and users
+must reconnect:
+
+```bash
+.venv/bin/python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Set the generated value only in Render's Environment screen. Do not commit it or
+place it in Flutter/GitHub Pages configuration.
 `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS`, and `API_DOCS_ENABLED=false`.
 
 ## Rollback

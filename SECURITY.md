@@ -13,9 +13,11 @@ parameterizes user input; no user-provided SQL, file path, or shell command is u
 ## Sensitive-data rules
 
 Never store or log passwords, UPI PINs, OTPs, CVVs, bank login credentials, OAuth
-client secrets, access/refresh tokens, raw unrelated SMS, raw Gmail messages, or
-raw bank statements. Current statement parsing is in memory only. Environment
-files with real values are ignored; only examples are committed.
+client secrets, access tokens, raw unrelated SMS, raw Gmail messages, or raw bank
+statements. Gmail refresh tokens are the sole exception: they are stored only when
+the user connects Gmail, encrypted at rest with a backend-only Fernet key, never
+sent to Flutter, and deleted on disconnect. Environment files with real values are
+ignored; only examples are committed.
 
 ## Audit status (2026-09-28)
 

@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -20,14 +21,45 @@ from app.db.session import (
     DatabaseUnavailableError,
     check_database_connection,
     dispose_engine,
+    get_engine,
 )
+from app.repositories.transactions import TransactionRepository
+from app.services.gmail_sync import GmailSyncService
+
+
+@asynccontextmanager
+async def _gmail_background_loop() -> None:
+    while True:
+        await asyncio.sleep(settings.gmail_sync_interval_seconds)
+        try:
+            await asyncio.to_thread(_run_due_gmail_sync)
+        except Exception:
+            logging.getLogger(__name__).warning("gmail background sync failed")
+
+
+def _run_due_gmail_sync() -> None:
+    from sqlalchemy.orm import Session
+
+    with Session(get_engine()) as session:
+        GmailSyncService(
+            TransactionRepository(session), settings
+        ).sync_due_connections()
+        session.commit()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Release database pool connections cleanly when the API stops."""
-    yield
-    dispose_engine()
+    task = None
+    if settings.gmail_background_sync_enabled and settings.gmail_oauth_configured:
+        task = asyncio.create_task(_gmail_background_loop())
+    try:
+        yield
+    finally:
+        if task is not None:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        dispose_engine()
 
 
 settings = get_settings()

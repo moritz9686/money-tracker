@@ -20,6 +20,8 @@ abstract interface class ApiClient {
     String path, {
     Map<String, String>? queryParameters,
   });
+
+  Future<Map<String, dynamic>> post(String path);
 }
 
 /// Minimal HTTP client for future authenticated API calls.
@@ -78,6 +80,32 @@ class HttpApiClient implements ApiClient {
       throw const ApiException('Unexpected API response');
     }
     return decoded;
+  }
+
+  @override
+  Future<Map<String, dynamic>> post(String path) async {
+    if (baseUrl.isEmpty) {
+      throw const ApiException('API_BASE_URL has not been configured');
+    }
+    try {
+      final dynamicHeaders = await headersProvider?.call() ?? const <String, String>{};
+      final response = await _client
+          .post(
+            Uri.parse(baseUrl).resolve(path),
+            headers: {'Accept': 'application/json', ...headers, ...dynamicHeaders},
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(_errorMessage(response.body) ?? 'Request failed', statusCode: response.statusCode);
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) throw const ApiException('Unexpected API response');
+      return decoded;
+    } on http.ClientException {
+      throw const ApiException('Unable to reach the server');
+    } on FormatException {
+      throw const ApiException('Unexpected API response');
+    }
   }
 
   String? _errorMessage(String body) {

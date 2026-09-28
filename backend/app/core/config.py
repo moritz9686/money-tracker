@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     gmail_client_secret: str | None = None
     gmail_redirect_uri: str | None = None
     gmail_oauth_state_secret: str | None = None
+    gmail_token_encryption_key: str | None = None
+    gmail_background_sync_enabled: bool = False
+    gmail_sync_interval_seconds: int = Field(default=900, ge=300, le=86400)
+    gmail_sync_batch_size: int = Field(default=20, ge=1, le=100)
     ai_provider: str | None = None
     ai_api_key: str | None = None
     cors_allowed_origins: str = ""
@@ -58,6 +62,7 @@ class Settings(BaseSettings):
                 self.gmail_client_secret,
                 self.gmail_redirect_uri,
                 self.gmail_oauth_state_secret,
+                self.gmail_token_encryption_key,
             )
         )
 

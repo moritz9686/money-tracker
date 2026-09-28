@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../domain/models/financial_models.dart';
@@ -144,6 +146,31 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   var _selectedIndex = 0;
   var _dataRevision = 0;
+  Timer? _gmailSyncTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncGmail();
+    _gmailSyncTimer = Timer.periodic(const Duration(minutes: 5), (_) => _syncGmail());
+  }
+
+  @override
+  void dispose() {
+    _gmailSyncTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _syncGmail() async {
+    final gmailRepository = widget.dependencies.gmailRepository;
+    if (gmailRepository == null) return;
+    try {
+      final result = await gmailRepository.sync();
+      if (result.imported > 0 && mounted) setState(() => _dataRevision++);
+    } catch (_) {
+      // A background refresh is best-effort; the screens retain their useful state.
+    }
+  }
 
   Future<void> _openGmailImport() async {
     final gmailRepository = widget.dependencies.gmailRepository;
