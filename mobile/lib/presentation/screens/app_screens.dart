@@ -675,38 +675,111 @@ class _TransactionDetailsBody extends StatelessWidget {
   final FinancialTransaction transaction;
 
   @override
-  Widget build(BuildContext context) => ListView(
-          padding: const EdgeInsets.all(20),
+  Widget build(BuildContext context) {
+    final optionalRows = <Widget>[
+      if (_hasValue(transaction.accountName) || _hasValue(transaction.accountLast4))
+        _DetailRow(
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'Account',
+          value: transaction.accountName ?? '•••• ${transaction.accountLast4}',
+        ),
+      if (_hasValue(transaction.bankName))
+        _DetailRow(icon: Icons.account_balance_outlined, label: 'Bank', value: transaction.bankName!),
+      if (_hasValue(transaction.upiId))
+        _DetailRow(icon: Icons.alternate_email_rounded, label: 'UPI ID', value: transaction.upiId!),
+      if (_hasValue(transaction.referenceId))
+        _DetailRow(icon: Icons.tag_rounded, label: 'Reference ID', value: transaction.referenceId!),
+      if (_hasValue(transaction.description))
+        _DetailRow(icon: Icons.notes_rounded, label: 'Note', value: transaction.description!),
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      children: [
+        _TransactionDetailHero(transaction: transaction),
+        const SizedBox(height: 24),
+        Text('Transaction overview', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        _DetailsCard(
           children: [
-            Icon(Icons.receipt_long_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(transaction.merchant ?? 'Unknown merchant', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(formatMoney(transaction.amount), textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 28),
-            _DetailRow(label: 'Type', value: transaction.type.name.toUpperCase()),
-            _DetailRow(label: 'Category', value: transaction.category?.name ?? 'Uncategorized'),
-            _DetailRow(label: 'Payment mode', value: _paymentModeLabel(transaction.paymentMode)),
-            _DetailRow(label: 'Account', value: transaction.accountName ?? transaction.accountLast4 ?? 'Not available'),
-            _DetailRow(label: 'Bank', value: transaction.bankName ?? 'Not available'),
-            _DetailRow(label: 'Reference', value: transaction.referenceId ?? 'Not available'),
-            _DetailRow(label: 'Date', value: _dateLabel(transaction.date)),
-            _DetailRow(label: 'Description', value: transaction.description ?? 'Not available'),
+            _DetailRow(icon: Icons.swap_vert_rounded, label: 'Type', value: transaction.type.name.toUpperCase()),
+            _DetailRow(icon: Icons.calendar_today_outlined, label: 'Date', value: _dateTimeLabel(transaction.date)),
+            _DetailRow(icon: Icons.account_tree_outlined, label: 'Payment mode', value: _paymentModeLabel(transaction.paymentMode)),
+            _DetailRow(icon: Icons.category_outlined, label: 'Category', value: transaction.category?.name ?? 'Uncategorized'),
           ],
-        );
+        ),
+        if (optionalRows.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text('Available details', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 10),
+          _DetailsCard(children: optionalRows),
+        ],
+      ],
+    );
+  }
+
+  bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
+}
+
+class _TransactionDetailHero extends StatelessWidget {
+  const _TransactionDetailHero({required this.transaction});
+  final FinancialTransaction transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDebit = transaction.type == TransactionType.debit;
+    final color = isDebit ? const Color(0xffe8564b) : const Color(0xff15803d);
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [color, color.withValues(alpha: .76)]),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white.withValues(alpha: .18),
+            child: Icon(isDebit ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: Colors.white, size: 30),
+          ),
+          const SizedBox(height: 12),
+          Text(transaction.merchant ?? 'Transaction', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Text('${isDebit ? '-' : '+'}${formatMoney(transaction.amount)}', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailsCard extends StatelessWidget {
+  const _DetailsCard({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Column(children: children),
+        ),
+      );
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({required this.icon, required this.label, required this.value});
+  final IconData icon;
   final String label;
   final String value;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
           children: [
+            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12),
             Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
-            Flexible(child: Text(value, textAlign: TextAlign.end)),
+            Flexible(child: Text(value, textAlign: TextAlign.end, style: const TextStyle(fontWeight: FontWeight.w600))),
           ],
         ),
       );
@@ -847,3 +920,10 @@ String _paymentModeLabel(PaymentMode mode) => switch (mode) {
     };
 
 String _dateLabel(DateTime value) => '${value.day}/${value.month}/${value.year}';
+
+String _dateTimeLabel(DateTime value) {
+  final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+  final minute = value.minute.toString().padLeft(2, '0');
+  final period = value.hour >= 12 ? 'PM' : 'AM';
+  return '${_dateLabel(value)} · $hour:$minute $period';
+}

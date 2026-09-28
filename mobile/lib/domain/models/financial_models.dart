@@ -64,6 +64,7 @@ class FinancialTransaction {
     required this.accountName,
     this.bankName,
     this.accountLast4,
+    this.upiId,
     this.referenceId,
   });
 
@@ -78,5 +79,6 @@ class FinancialTransaction {
   final String? accountName;
   final String? bankName;
   final String? accountLast4;
+  final String? upiId;
   final String? referenceId;
 }

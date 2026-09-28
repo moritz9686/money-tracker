@@ -47,6 +47,7 @@ class ApiTransactionRepository implements TransactionRepository {
       accountName: null,
       bankName: value['bank_name'] as String?,
       accountLast4: value['account_last4'] as String?,
+      upiId: value['upi_id'] as String?,
       referenceId: value['reference_id'] as String?,
     );
   }
