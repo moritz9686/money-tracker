@@ -143,32 +143,43 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   var _selectedIndex = 0;
   var _dataRevision = 0;
   Timer? _gmailSyncTimer;
+  var _gmailSyncInProgress = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _syncGmail();
-    _gmailSyncTimer = Timer.periodic(const Duration(minutes: 5), (_) => _syncGmail());
+    _gmailSyncTimer = Timer.periodic(const Duration(minutes: 1), (_) => _syncGmail());
   }
 
   @override
   void dispose() {
     _gmailSyncTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _syncGmail();
   }
 
   Future<void> _syncGmail() async {
     final gmailRepository = widget.dependencies.gmailRepository;
-    if (gmailRepository == null) return;
+    if (gmailRepository == null || _gmailSyncInProgress) return;
+    _gmailSyncInProgress = true;
     try {
       final result = await gmailRepository.sync();
       if (result.imported > 0 && mounted) setState(() => _dataRevision++);
     } catch (_) {
       // A background refresh is best-effort; the screens retain their useful state.
+    } finally {
+      _gmailSyncInProgress = false;
     }
   }
 
