@@ -224,6 +224,12 @@ class Transaction(Base):
         UniqueConstraint(
             "user_id", "fingerprint", name="uq_transactions_user_fingerprint"
         ),
+        # A reliable bank/UPI reference identifies one transaction for one user.
+        # PostgreSQL permits multiple NULLs here, so transactions without a
+        # reference continue to use the deterministic fingerprint safeguard.
+        UniqueConstraint(
+            "user_id", "reference_id", name="uq_transactions_user_reference_id"
+        ),
         Index("ix_transactions_user_date", "user_id", "transaction_date"),
         Index("ix_transactions_account_date", "account_id", "transaction_date"),
         Index("ix_transactions_category_date", "category_id", "transaction_date"),
@@ -296,9 +302,10 @@ class TransactionSourceRecord(Base):
     __tablename__ = "transaction_source_records"
     __table_args__ = (
         UniqueConstraint(
+            "user_id",
             "source",
             "source_fingerprint",
-            name="uq_transaction_source_records_source_fp",
+            name="uq_transaction_source_records_user_source_fp",
         ),
         Index("ix_transaction_source_records_transaction_id", "transaction_id"),
         Index("ix_transaction_source_records_reference_id", "reference_id"),
@@ -309,6 +316,9 @@ class TransactionSourceRecord(Base):
     )
     transaction_id: Mapped[UUID] = mapped_column(
         ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     source: Mapped[TransactionSource] = mapped_column(
         SqlEnum(TransactionSource, name="transaction_source", create_type=False),

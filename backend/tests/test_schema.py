@@ -62,6 +62,7 @@ def test_schema_has_relationships_and_deduplication_constraint() -> None:
     index_names = {index.name for index in Transaction.__table__.indexes}
 
     assert "uq_transactions_user_fingerprint" in constraint_names
+    assert "uq_transactions_user_reference_id" in constraint_names
     assert "ix_transactions_user_date" in index_names
     assert "ix_transactions_account_date" in index_names
 

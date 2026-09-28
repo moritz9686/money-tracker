@@ -236,6 +236,7 @@ class TransactionDeduplicationService:
         self.repository.record_source(
             TransactionSourceRecord(
                 transaction_id=transaction.id,
+                user_id=candidate.user_id,
                 source=candidate.source,
                 reference_id=normalize_reference_id(candidate.reference_id),
                 source_fingerprint=source_fingerprint,

@@ -114,6 +114,7 @@ def test_exact_source_import_is_idempotent() -> None:
     assert second.match_type is DeduplicationMatchType.SOURCE
     assert len(repository.transactions) == 1
     assert len(repository.source_records) == 1
+    assert repository.source_records[0].user_id == USER_ID
 
 
 def test_cross_source_reference_id_resolves_to_one_logical_transaction() -> None:
@@ -134,6 +135,26 @@ def test_cross_source_reference_id_resolves_to_one_logical_transaction() -> None
     assert second.match_type is DeduplicationMatchType.REFERENCE
     assert second.transaction.id == first.transaction.id
     assert len(repository.source_records) == 2
+
+
+def test_same_reference_is_isolated_between_users() -> None:
+    """A reference from one authenticated user must never affect another user."""
+    repository = InMemoryDeduplicationRepository()
+    service = TransactionDeduplicationService(repository)
+
+    first = service.deduplicate(candidate(reference_id="UPI-REF-123456"))
+    second = service.deduplicate(
+        candidate(
+            user_id=UUID("00000000-0000-0000-0000-000000000002"),
+            account_id=UUID("00000000-0000-0000-0000-000000000020"),
+            reference_id="UPI-REF-123456",
+        )
+    )
+
+    assert first.created is True
+    assert second.created is True
+    assert first.transaction.id != second.transaction.id
+    assert len(repository.transactions) == 2
 
 
 def test_same_amount_with_different_merchants_is_not_deduplicated() -> None:

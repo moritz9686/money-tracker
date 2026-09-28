@@ -222,6 +222,7 @@ class TransactionRepository:
             .join(TransactionSourceRecord)
             .where(
                 Transaction.user_id == user_id,
+                TransactionSourceRecord.user_id == user_id,
                 TransactionSourceRecord.source == source,
                 TransactionSourceRecord.source_fingerprint == source_fingerprint,
             )
