@@ -413,6 +413,7 @@ class _SyncInsightCard extends StatelessWidget {
           ],
         ),
       );
+}
 
 class _BalanceHero extends StatelessWidget {
   const _BalanceHero({required this.income, required this.expenses});
