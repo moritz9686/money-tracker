@@ -27,7 +27,6 @@ from app.repositories.transactions import TransactionRepository
 from app.services.gmail_sync import GmailSyncService
 
 
-@asynccontextmanager
 async def _gmail_background_loop() -> None:
     while True:
         await asyncio.sleep(settings.gmail_sync_interval_seconds)
