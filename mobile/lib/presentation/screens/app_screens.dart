@@ -311,7 +311,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ...transactions.take(3).map(
                     (transaction) => TransactionListTile(
                       transaction: transaction,
-                      repository: repository,
+                      repository: widget.repository,
                     ),
                   ),
               const SizedBox(height: 20),
