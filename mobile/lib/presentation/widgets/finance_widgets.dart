@@ -68,23 +68,56 @@ class BreakdownRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraction = total == 0 ? 0.0 : amount / total;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    final color = _breakdownColor(label);
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
       child: Column(
         children: [
           Row(
             children: [
-              Expanded(child: Text(label)),
-              Text(formatMoney(Money.fromMinorUnits(amount, 'INR'))),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(11)),
+                child: Icon(_breakdownIcon(label), size: 18, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
+              Text(formatMoney(Money.fromMinorUnits(amount, 'INR')), style: const TextStyle(fontWeight: FontWeight.w700)),
             ],
           ),
-          const SizedBox(height: 5),
-          LinearProgressIndicator(value: fraction, minHeight: 7),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(value: fraction, minHeight: 7, color: color, backgroundColor: color.withValues(alpha: 0.12)),
+          ),
         ],
       ),
     );
   }
 }
+
+IconData _breakdownIcon(String label) => switch (label.toLowerCase()) {
+      'food' => Icons.restaurant_rounded,
+      'transport' => Icons.directions_car_filled_rounded,
+      'shopping' => Icons.shopping_bag_rounded,
+      'entertainment' => Icons.movie_rounded,
+      'upi' => Icons.qr_code_rounded,
+      'card' => Icons.credit_card_rounded,
+      _ => Icons.auto_graph_rounded,
+    };
+
+Color _breakdownColor(String label) => switch (label.toLowerCase()) {
+      'food' => const Color(0xfff97316),
+      'transport' => const Color(0xff0ea5e9),
+      'shopping' => const Color(0xffa855f7),
+      'entertainment' => const Color(0xffec4899),
+      'upi' => const Color(0xff16a34a),
+      'card' => const Color(0xff2563eb),
+      _ => const Color(0xff6750e8),
+    };
 
 class EmptyState extends StatelessWidget {
   const EmptyState({required this.message, super.key});

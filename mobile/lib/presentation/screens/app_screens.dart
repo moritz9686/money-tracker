@@ -209,7 +209,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     const titles = ['Dashboard', 'Transactions', 'Accounts', 'Categories', 'Settings'];
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[_selectedIndex]),
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        title: Text(titles[_selectedIndex], style: const TextStyle(fontWeight: FontWeight.w700)),
         actions: _selectedIndex == 1
             ? [
                 if (widget.dependencies.gmailRepository != null)
@@ -294,8 +296,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
-              Text('Your money, at a glance', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 14),
+              const _DashboardHeader(),
+              const SizedBox(height: 18),
               _BalanceHero(income: income, expenses: expenses),
               const SizedBox(height: 20),
               GridView.count(
@@ -311,6 +313,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   SummaryCard(label: 'Net balance', amount: Money.fromMinorUnits(income - expenses, 'INR'), color: Colors.blue),
                 ],
               ),
+              const SizedBox(height: 18),
+              _SyncInsightCard(transactionCount: transactions.length),
               const SizedBox(height: 28),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -342,6 +346,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       );
 }
+
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(greeting, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 3),
+              Text('Here is your financial snapshot', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54)),
+            ],
+          ),
+        ),
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xffede9fe),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.person_rounded, color: Color(0xff6750e8)),
+        ),
+      ],
+    );
+  }
+}
+
+class _SyncInsightCard extends StatelessWidget {
+  const _SyncInsightCard({required this.transactionCount});
+  final int transactionCount;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xfff0fdf4),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xffbbf7d0)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: const Color(0xffdcfce7), borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.sync_rounded, color: Color(0xff15803d)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Your transactions are protected', style: TextStyle(fontWeight: FontWeight.w700)),
+                  Text('$transactionCount transactions in your private timeline', style: const TextStyle(color: Color(0xff4b5563), fontSize: 12)),
+                ],
+              ),
+            ),
+            const Icon(Icons.verified_rounded, color: Color(0xff16a34a)),
+          ],
+        ),
+      );
 
 class _BalanceHero extends StatelessWidget {
   const _BalanceHero({required this.income, required this.expenses});
@@ -671,17 +742,22 @@ class AccountsScreen extends StatelessWidget {
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             itemCount: snapshot.data!.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (_, index) {
               final account = snapshot.data![index];
               return Card(
                 child: ListTile(
-                  leading: const Icon(Icons.account_balance_outlined),
-                  title: Text(account.name),
-                  subtitle: Text('•••• ${account.last4}'),
-                  trailing: Text(formatMoney(account.balance)),
+                  contentPadding: const EdgeInsets.all(18),
+                  leading: Container(
+                    padding: const EdgeInsets.all(11),
+                    decoration: BoxDecoration(color: const Color(0xffede9fe), borderRadius: BorderRadius.circular(14)),
+                    child: const Icon(Icons.account_balance_rounded, color: Color(0xff6750e8)),
+                  ),
+                  title: Text(account.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('Account •••• ${account.last4}'),
+                  trailing: Text(formatMoney(account.balance), style: const TextStyle(fontWeight: FontWeight.w700)),
                 ),
               );
             },
@@ -699,16 +775,25 @@ class CategoriesScreen extends StatelessWidget {
         future: repository.getCategories(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (snapshot.data!.isEmpty) return const EmptyState(message: 'Categories appear here as recognized transactions arrive.');
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             itemCount: snapshot.data!.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (_, index) {
               final category = snapshot.data![index];
               return Card(
                 child: ListTile(
-                  leading: Text(category.icon, style: const TextStyle(fontSize: 26)),
-                  title: Text(category.name),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  leading: Container(
+                    width: 46,
+                    height: 46,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: const Color(0xfff4f1ff), borderRadius: BorderRadius.circular(15)),
+                    child: Text(category.icon, style: const TextStyle(fontSize: 23)),
+                  ),
+                  title: Text(category.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
                 ),
               );
             },
