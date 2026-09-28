@@ -31,5 +31,19 @@ class ApiReferenceDataRepository implements ReferenceDataRepository {
   }
 
   @override
-  Future<List<Category>> getCategories() async => const [];
+  Future<List<Category>> getCategories() async {
+    final response = await _client.getValue('/categories');
+    if (response is! List) throw const ApiException('Unexpected API response');
+    return response.map((value) {
+      if (value is! Map<String, dynamic>) {
+        throw const ApiException('Unexpected API response');
+      }
+      final id = value['id'];
+      final name = value['name'];
+      if (id is! String || name is! String) {
+        throw const ApiException('Unexpected API response');
+      }
+      return Category(id: id, name: name, icon: categoryIcon(name));
+    }).toList(growable: false);
+  }
 }

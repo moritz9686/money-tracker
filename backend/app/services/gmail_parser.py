@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.db.models import PaymentMode, TransactionType
+from app.services.categorization import RULES
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,11 @@ _REFERENCE = re.compile(
     r"(?:ref(?:erence)?|utr|rrn|txn(?:\s*id)?)\s*[:#-]?\s*([A-Z0-9-]{6,})", re.I
 )
 _UPI = re.compile(r"\b([a-z0-9._-]+@[a-z0-9._-]+)\b", re.I)
+_MERCHANT = re.compile(
+    r"(?:merchant|paid\s+to|purchase\s+at|spent\s+at|at|to|from|towards)\s*[:\-]?\s*"
+    r"([A-Za-z][A-Za-z0-9 .&'/-]{1,80})",
+    re.I,
+)
 
 
 def is_likely_transaction_email(subject: str, snippet: str) -> bool:
@@ -62,9 +68,15 @@ def parse_transaction_email(
         else PaymentMode.OTHER
     )
     last4 = _LAST4.search(text)
-    merchant_match = re.search(
-        r"(?:\bat|\bto)\s+([A-Za-z][A-Za-z0-9 &-]{1,80})", text, re.I
-    ) or re.search(r"\bfrom\s+([A-Za-z][A-Za-z0-9 &-]{1,80})", text, re.I)
+    known_merchant = next(
+        (
+            merchant.title()
+            for merchant in RULES
+            if re.search(rf"\b{re.escape(merchant)}\b", text, re.I)
+        ),
+        None,
+    )
+    merchant_match = _MERCHANT.search(text)
     bank_match = re.search(r"^([A-Za-z][A-Za-z ]{2,40})(?:\s*:|\s+alert)", text)
     reference = _REFERENCE.search(text)
     upi = _UPI.search(text)
@@ -74,7 +86,8 @@ def parse_transaction_email(
         transaction_date=received_at
         if received_at.tzinfo
         else received_at.replace(tzinfo=timezone.utc),
-        merchant=merchant_match.group(1).strip() if merchant_match else None,
+        merchant=known_merchant
+        or _clean_merchant(merchant_match.group(1) if merchant_match else None),
         bank_name=bank_match.group(1).strip() if bank_match else None,
         account_last4=last4.group(1) if last4 else None,
         card_last4=last4.group(1) if mode == PaymentMode.CARD and last4 else None,
@@ -83,3 +96,15 @@ def parse_transaction_email(
         payment_mode=mode,
         description=text[:500],
     )
+
+
+def _clean_merchant(value: str | None) -> str | None:
+    if not value:
+        return None
+    cleaned = re.split(
+        r"\s+(?:on|via|using|from|ref(?:erence)?|utr|rrn|txn|account|a/c)\b|[.;]",
+        value,
+        maxsplit=1,
+        flags=re.I,
+    )[0].strip(" -:")
+    return cleaned if len(cleaned) > 1 else None

@@ -2,6 +2,14 @@ enum TransactionType { debit, credit }
 
 enum PaymentMode { upi, card, neft, imps, rtgs, atm, cash, other }
 
+String categoryIcon(String category) => switch (category.toLowerCase()) {
+      'food' => '🍜',
+      'transport' => '🚕',
+      'shopping' => '🛍️',
+      'entertainment' => '🎬',
+      _ => '✦',
+    };
+
 class Money {
   const Money._(this.minorUnits, this.currency);
 

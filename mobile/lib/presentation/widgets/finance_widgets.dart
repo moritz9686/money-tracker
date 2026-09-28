@@ -28,7 +28,11 @@ class SummaryCard extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          color: color.withValues(alpha: 0.10),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -91,7 +95,14 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(message, textAlign: TextAlign.center),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.auto_graph_rounded, size: 48, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 12),
+              Text(message, textAlign: TextAlign.center),
+            ],
+          ),
         ),
       );
 }

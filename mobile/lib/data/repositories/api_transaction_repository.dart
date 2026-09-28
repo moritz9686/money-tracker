@@ -32,6 +32,7 @@ class ApiTransactionRepository implements TransactionRepository {
       throw const ApiException('Unexpected API response');
     }
     final categoryId = value['category_id'] as String?;
+    final categoryName = value['category_name'] as String?;
     return FinancialTransaction(
       id: _asString(value['id']),
       merchant: value['merchant'] as String?,
@@ -40,9 +41,9 @@ class ApiTransactionRepository implements TransactionRepository {
       date: DateTime.parse(_asString(value['transaction_date'])),
       type: _transactionType(value['transaction_type']),
       paymentMode: _paymentMode(value['payment_mode']),
-      category: categoryId == null
+      category: categoryId == null || categoryName == null
           ? null
-          : Category(id: categoryId, name: 'Categorized', icon: '🏷️'),
+          : Category(id: categoryId, name: categoryName, icon: categoryIcon(categoryName)),
       accountName: null,
       bankName: value['bank_name'] as String?,
       accountLast4: value['account_last4'] as String?,

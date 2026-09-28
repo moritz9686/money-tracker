@@ -224,6 +224,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       ),
       body: pages[_selectedIndex],
       bottomNavigationBar: NavigationBar(
+        height: 76,
+        indicatorColor: Theme.of(context).colorScheme.primaryContainer,
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) => setState(() => _selectedIndex = index),
         destinations: const [
@@ -287,14 +289,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             byMode.update(_paymentModeLabel(item.paymentMode), (amount) => amount + item.amount.minorUnits,
                 ifAbsent: () => item.amount.minorUnits);
           }
-          return ListView(
-            padding: const EdgeInsets.all(16),
+          return RefreshIndicator(
+            onRefresh: () async => _retry(),
+            child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
-              Text('This month', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
+              Text('Your money, at a glance', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 14),
+              _BalanceHero(income: income, expenses: expenses),
+              const SizedBox(height: 20),
               GridView.count(
-                crossAxisCount: 2,
-                childAspectRatio: 1.65,
+                crossAxisCount: 3,
+                childAspectRatio: 0.98,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 10,
@@ -305,28 +311,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   SummaryCard(label: 'Net balance', amount: Money.fromMinorUnits(income - expenses, 'INR'), color: Colors.blue),
                 ],
               ),
-              const SizedBox(height: 24),
-              Text('Recent transactions', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
+              const SizedBox(height: 28),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Recent activity', style: Theme.of(context).textTheme.titleLarge),
+                  const Icon(Icons.arrow_forward_rounded, size: 20),
+                ],
+              ),
+              const SizedBox(height: 12),
               ...transactions.take(3).map(
                     (transaction) => TransactionListTile(
                       transaction: transaction,
                       repository: widget.repository,
                     ),
                   ),
-              const SizedBox(height: 20),
-              Text('Spending by category', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 28),
+              Text('Spending by category', style: Theme.of(context).textTheme.titleLarge),
               ...byCategory.entries.map(
                 (entry) => BreakdownRow(label: entry.key, amount: entry.value, total: expenses),
               ),
-              const SizedBox(height: 20),
-              Text('Spending by payment mode', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 28),
+              Text('Payment methods', style: Theme.of(context).textTheme.titleLarge),
               ...byMode.entries.map(
                 (entry) => BreakdownRow(label: entry.key, amount: entry.value, total: expenses),
               ),
             ],
+          ),
           );
         },
+      );
+}
+
+class _BalanceHero extends StatelessWidget {
+  const _BalanceHero({required this.income, required this.expenses});
+  final int income;
+  final int expenses;
+
+  @override
+  Widget build(BuildContext context) {
+    final net = income - expenses;
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          colors: [Color(0xff6750e8), Color(0xffa78bfa)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: const [BoxShadow(color: Color(0x336750e8), blurRadius: 22, offset: Offset(0, 10))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.account_balance_wallet_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Net cash flow', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            formatMoney(Money.fromMinorUnits(net, 'INR')),
+            style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _HeroAmount(label: 'Income', amount: income),
+              const SizedBox(width: 24),
+              _HeroAmount(label: 'Spent', amount: expenses),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroAmount extends StatelessWidget {
+  const _HeroAmount({required this.label, required this.amount});
+  final String label;
+  final int amount;
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white70)),
+          Text(formatMoney(Money.fromMinorUnits(amount, 'INR')), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
       );
 }
 
@@ -455,13 +530,23 @@ class TransactionListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
         child: ListTile(
-          leading: CircleAvatar(child: Text(transaction.category?.icon ?? '₹')),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+          leading: CircleAvatar(
+            radius: 25,
+            backgroundColor: transaction.type == TransactionType.debit
+                ? const Color(0xffffedea)
+                : const Color(0xffe4f8ec),
+            child: Icon(
+              transaction.type == TransactionType.debit ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+              color: transaction.type == TransactionType.debit ? const Color(0xffe8564b) : const Color(0xff15803d),
+            ),
+          ),
           title: Text(transaction.merchant ?? 'Unknown merchant'),
-          subtitle: Text('${transaction.category?.name ?? 'Uncategorized'} • ${_dateLabel(transaction.date)}'),
+          subtitle: Text('${transaction.category?.icon ?? '✦'} ${transaction.category?.name ?? _paymentModeLabel(transaction.paymentMode)}  •  ${_dateLabel(transaction.date)}'),
           trailing: Text(
             '${transaction.type == TransactionType.debit ? '-' : '+'}${formatMoney(transaction.amount)}',
             style: TextStyle(
-              color: transaction.type == TransactionType.debit ? Colors.red : Colors.green,
+              color: transaction.type == TransactionType.debit ? const Color(0xffe8564b) : const Color(0xff15803d),
               fontWeight: FontWeight.bold,
             ),
           ),

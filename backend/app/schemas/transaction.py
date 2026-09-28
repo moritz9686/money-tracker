@@ -107,6 +107,7 @@ class TransactionRead(BaseModel):
     upi_id: str | None
     reference_id: str | None
     category_id: UUID | None
+    category_name: str | None = None
     source: TransactionSource
     confidence: Decimal
     fingerprint: str

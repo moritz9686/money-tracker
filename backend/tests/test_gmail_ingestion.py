@@ -1,5 +1,6 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
+from app.db.models import Category
 from app.services.gmail_ingestion import GmailImportService
 from tests.test_deduplication import InMemoryDeduplicationRepository
 
@@ -10,6 +11,12 @@ ACCOUNT_ID = UUID("00000000-0000-0000-0000-000000000010")
 class GmailRepository(InMemoryDeduplicationRepository):
     def get_account(self, account_id: UUID, user_id: UUID) -> object | None:
         return object() if (account_id, user_id) == (ACCOUNT_ID, USER_ID) else None
+
+    def get_or_create_category(self, user_id: UUID, name: str) -> Category:
+        return Category(id=uuid4(), user_id=user_id, name=name)
+
+    def backfill_deterministic_categories(self, user_id: UUID) -> None:
+        return None
 
 
 def _message(subject: str, snippet: str) -> dict[str, object]:
@@ -44,3 +51,4 @@ def test_import_is_idempotent_and_ignores_unknown_email() -> None:
     assert repository.transactions[0].description == "UPI SWIGGY HDFC BANK"
     assert "1234" not in repository.transactions[0].description
     assert "ABCD123456" not in repository.transactions[0].description
+    assert repository.transactions[0].category_id is not None

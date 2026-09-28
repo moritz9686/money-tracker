@@ -11,6 +11,7 @@ import httpx
 from app.core.config import Settings
 from app.db.models import TransactionSource
 from app.repositories.transactions import TransactionRepository
+from app.services.categorization import deterministic_category
 from app.services.deduplication import (
     DeduplicationCandidate,
     TransactionDeduplicationService,
@@ -157,6 +158,7 @@ class GmailImportService:
                 )
                 if part
             )[:500]
+            category = deterministic_category(parsed.merchant)
             result = self.deduplication.deduplicate(
                 DeduplicationCandidate(
                     user_id=user_id,
@@ -173,6 +175,13 @@ class GmailImportService:
                     card_last4=parsed.card_last4,
                     upi_id=parsed.upi_id,
                     reference_id=parsed.reference_id,
+                    category_id=(
+                        self.repository.get_or_create_category(
+                            user_id, category.category
+                        ).id
+                        if category.source == "rule"
+                        else None
+                    ),
                     source=TransactionSource.GMAIL,
                     confidence=Decimal("0.850"),
                 )
@@ -181,4 +190,5 @@ class GmailImportService:
                 imported += 1
             else:
                 duplicates += 1
+        self.repository.backfill_deterministic_categories(user_id)
         return GmailImportResult(len(messages), imported, duplicates, unrecognized)

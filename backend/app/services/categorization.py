@@ -59,3 +59,11 @@ class MerchantCategorizationService:
         result = Categorization(category, Decimal("1"), "user")
         self.store.save(user_id, normalize_merchant(merchant), result)
         return result
+
+
+def deterministic_category(merchant: str | None) -> Categorization:
+    """Classify known merchants without external services or data sharing."""
+    normalized = normalize_merchant(merchant)
+    if normalized in RULES:
+        return Categorization(RULES[normalized], Decimal("1"), "rule")
+    return Categorization("Uncategorized", Decimal("0"), "fallback")

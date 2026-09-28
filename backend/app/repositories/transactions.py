@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import Select, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db.models import (
     Category,
@@ -118,6 +118,32 @@ class TransactionRepository:
             )
         )
 
+    def get_or_create_category(self, user_id: UUID, name: str) -> Category:
+        category = self.session.scalar(
+            select(Category).where(Category.user_id == user_id, Category.name == name)
+        )
+        if category is None:
+            category = Category(user_id=user_id, name=name)
+            self.session.add(category)
+            self.session.flush()
+        return category
+
+    def backfill_deterministic_categories(self, user_id: UUID) -> None:
+        from app.services.categorization import deterministic_category
+
+        transactions = self.session.scalars(
+            select(Transaction).where(
+                Transaction.user_id == user_id, Transaction.category_id.is_(None)
+            )
+        ).all()
+        for transaction in transactions:
+            result = deterministic_category(transaction.merchant)
+            if result.source == "rule":
+                transaction.category_id = self.get_or_create_category(
+                    user_id, result.category
+                ).id
+        self.session.flush()
+
     def create(self, transaction: Transaction) -> Transaction:
         self.session.add(transaction)
         self.session.flush()
@@ -147,7 +173,9 @@ class TransactionRepository:
         limit: int,
         offset: int,
     ) -> tuple[list[Transaction], int]:
-        statement: Select[tuple[Transaction]] = select(Transaction).where(
+        statement: Select[tuple[Transaction]] = select(Transaction).options(
+            selectinload(Transaction.category)
+        ).where(
             Transaction.user_id == user_id
         )
         if start_date:

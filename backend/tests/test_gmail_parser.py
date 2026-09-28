@@ -24,6 +24,17 @@ def test_parses_synthetic_upi_debit_email() -> None:
     assert parsed.reference_id == "ABCD123456"
 
 
+def test_recognizes_known_merchant_in_varied_email_format() -> None:
+    parsed = parse_transaction_email(
+        subject="Payment received",
+        snippet="Your card was debited INR 499.00 for SWIGGY order. Ref TEST123456",
+        received_at=datetime(2026, 9, 28, tzinfo=timezone.utc),
+    )
+
+    assert parsed is not None
+    assert parsed.merchant == "Swiggy"
+
+
 def test_ignores_unrelated_synthetic_email() -> None:
     assert not is_likely_transaction_email("Welcome", "Your account is ready")
     assert (

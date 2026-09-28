@@ -285,6 +285,10 @@ class Transaction(Base):
         back_populates="transaction", cascade="all, delete-orphan"
     )
 
+    @property
+    def category_name(self) -> str | None:
+        return self.category.name if self.category else None
+
 
 class TransactionSourceRecord(Base):
     """Minimal provenance record for an observation mapped to one transaction."""

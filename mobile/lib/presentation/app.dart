@@ -57,9 +57,27 @@ class MoneyTrackerApp extends StatelessWidget {
         title: 'Money Tracker',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff146c94)),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xff6750e8),
+            primary: const Color(0xff6750e8),
+            surface: const Color(0xfff8f7ff),
+          ),
           useMaterial3: true,
-          cardTheme: const CardThemeData(margin: EdgeInsets.zero),
+          scaffoldBackgroundColor: const Color(0xfff8f7ff),
+          cardTheme: CardThemeData(
+            margin: EdgeInsets.zero,
+            elevation: 0,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+          ),
         ),
         home: SplashScreen(dependencies: dependencies),
       );

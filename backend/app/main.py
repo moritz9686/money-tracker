@@ -12,6 +12,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.api.routes.accounts import router as accounts_router
 from app.api.routes.analytics import router as analytics_router
+from app.api.routes.categories import router as categories_router
 from app.api.routes.gmail import router as gmail_router
 from app.api.routes.transactions import router as transactions_router
 from app.core.config import get_settings
@@ -87,6 +88,7 @@ app.add_middleware(
 )
 app.include_router(transactions_router)
 app.include_router(accounts_router)
+app.include_router(categories_router)
 app.include_router(analytics_router)
 app.include_router(gmail_router)
 
