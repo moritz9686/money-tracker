@@ -238,17 +238,37 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 }
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({required this.repository, super.key});
 
   final TransactionRepository repository;
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  late Future<TransactionPage> _transactions;
+
+  @override
+  void initState() {
+    super.initState();
+    _transactions = widget.repository.getTransactions(const TransactionQuery());
+  }
+
+  void _retry() => setState(
+        () => _transactions = widget.repository.getTransactions(const TransactionQuery()),
+      );
+
+  @override
   Widget build(BuildContext context) => FutureBuilder<TransactionPage>(
-        future: repository.getTransactions(const TransactionQuery()),
+        future: _transactions,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return EmptyState(message: 'Could not load dashboard. ${snapshot.error}');
+            return _RetryState(
+              message: 'Could not load dashboard. Please try again.',
+              onRetry: _retry,
+            );
           }
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final transactions = snapshot.data!.items;

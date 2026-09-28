@@ -54,7 +54,7 @@ class HttpApiClient implements ApiClient {
       final dynamicHeaders = await headersProvider?.call() ?? const <String, String>{};
       final response = await _client
           .get(uri, headers: {'Accept': 'application/json', ...headers, ...dynamicHeaders})
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 45));
       final body = response.body;
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiException(
@@ -94,7 +94,7 @@ class HttpApiClient implements ApiClient {
             Uri.parse(baseUrl).resolve(path),
             headers: {'Accept': 'application/json', ...headers, ...dynamicHeaders},
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 45));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiException(_errorMessage(response.body) ?? 'Request failed', statusCode: response.statusCode);
       }
